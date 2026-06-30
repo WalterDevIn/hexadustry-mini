@@ -25,16 +25,15 @@ La version actual contiene:
 - Grilla virtual grande: el mapa tiene radio amplio, pero solo se dibujan los hexes visibles en camara.
 - Hexagonos al `0.8` del tamaño visual anterior.
 - Camara centrada en la nave del jugador.
-- Minerales prototipo.
-- Nucleo.
-- Extractor.
-- Transportadores visuales.
-- Torreta visual.
+- Tres capas de mapa: suelo, terrestre y aerea.
+- Minerales en capa de suelo.
+- Bloques naturales y construidos en capa terrestre.
+- Jugador y enemigo volador en capa aerea.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica y ECS.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa y ECS.
 
 ## Estructura tecnica minima
 
@@ -74,6 +73,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 
 - `transform`: posicion `x,y` y rotacion.
 - `velocity`: velocidad y velocidad maxima.
+- `mapLayer`: capa de mapa donde existe la entidad.
 - `playerControlled`: marca y parametros de control del jugador.
 - `enemyAi`: comportamiento basico de enemigo.
 - `team`: faccion o bando.
@@ -85,7 +85,42 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `playerControlSystem`: lee input y acelera la nave del jugador.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `movementSystem`: aplica velocidad sobre transform.
-- `canvasRenderer`: no decide gameplay; solo dibuja mapa, grilla visible y entidades renderizables.
+- `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
+
+## Capas del mapa
+
+Cada tile hexagonal tiene tres capas:
+
+### `ground`
+
+Capa de suelo. Contiene:
+
+- terreno base;
+- minerales.
+
+### `surface`
+
+Capa terrestre. Contiene:
+
+- unidades terrestres;
+- bloques naturales;
+- bloques construidos;
+- edificios.
+
+### `air`
+
+Capa aerea. Contiene:
+
+- jugador;
+- unidades voladoras.
+
+El renderer dibuja en este orden:
+
+```txt
+ground -> surface -> air
+```
+
+Eso permite que minerales queden debajo, edificios/bloques queden en superficie y naves voladoras queden por encima.
 
 ## Mapa y camara
 
@@ -96,7 +131,7 @@ El mapa ya no se dibuja iterando una lista completa de hexagonos. `generateVisib
 - tamaño actual del hexagono;
 - radio maximo del mapa.
 
-El estado del mapa es sparse: `tileMap` solo guarda tiles especiales, como minerales o edificios. Los tiles vacios se construyen temporalmente al renderizar.
+El estado del mapa es sparse: `tileMap` solo guarda tiles especiales, como minerales, bloques naturales o edificios. Los tiles vacios se construyen temporalmente al renderizar.
 
 ## Convenciones iniciales
 
