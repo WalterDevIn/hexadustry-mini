@@ -75,7 +75,7 @@ function getConnectedInputSides(mapWorld, building) {
 
   if (localSides.length === 0) return [3];
 
-  return localSides;
+  return localSides.sort((a, b) => a - b);
 }
 
 function getHexCorners(size) {
@@ -89,6 +89,10 @@ function getSideEdge(corners, sideIndex) {
     a: corners[edgeIndex],
     b: corners[(edgeIndex + 1) % corners.length],
   };
+}
+
+function getPointKey(point) {
+  return `${point.x.toFixed(3)},${point.y.toFixed(3)}`;
 }
 
 function samePoint(a, b) {
@@ -157,6 +161,50 @@ function drawConnectorLines(ctx, inputEdge, outputEdge, alpha) {
   ctx.restore();
 }
 
+function groupContiguousSides(localInputSides) {
+  const uniqueSides = [...new Set(localInputSides)].filter((side) => side !== 0).sort((a, b) => a - b);
+  const groups = [];
+
+  for (const side of uniqueSides) {
+    const lastGroup = groups[groups.length - 1];
+    const previousSide = lastGroup?.[lastGroup.length - 1];
+
+    if (lastGroup && side === previousSide + 1) {
+      lastGroup.push(side);
+    } else {
+      groups.push([side]);
+    }
+  }
+
+  return groups;
+}
+
+function getOpenEdgeForSideGroup(corners, sideGroup) {
+  const pointCounts = new Map();
+  const pointByKey = new Map();
+
+  for (const side of sideGroup) {
+    const edge = getSideEdge(corners, side);
+
+    for (const point of [edge.a, edge.b]) {
+      const key = getPointKey(point);
+
+      pointByKey.set(key, point);
+      pointCounts.set(key, (pointCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const endpoints = [...pointCounts.entries()]
+    .filter(([, count]) => count === 1)
+    .map(([key]) => pointByKey.get(key));
+
+  if (endpoints.length >= 2) {
+    return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
+  }
+
+  return getSideEdge(corners, sideGroup[0]);
+}
+
 function getSegmentPoint(start, end, t) {
   return {
     x: start.x + (end.x - start.x) * t,
@@ -205,19 +253,21 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   const outputSide = building.direction ?? 0;
   const direction = getDirectionVector(outputSide, size);
   const localInputSides = getConnectedInputSides(mapWorld, building);
+  const sideGroups = groupContiguousSides(localInputSides);
   const corners = getHexCorners(size);
   const outputEdge = getSideEdge(corners, 0);
   const inputEdges = localInputSides.map((localSide) => getSideEdge(corners, localSide));
+  const removedEdges = [outputEdge, ...inputEdges];
   const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => {
     return [toWorldSide(localSide, outputSide), inputEdges[index]];
   }));
 
   ctx.save();
   ctx.rotate(direction.angle);
-  drawOuterHexWithoutEdges(ctx, corners, [outputEdge, ...inputEdges], alpha);
+  drawOuterHexWithoutEdges(ctx, corners, removedEdges, alpha);
 
-  for (const inputEdge of inputEdges) {
-    drawConnectorLines(ctx, inputEdge, outputEdge, alpha);
+  for (const sideGroup of sideGroups) {
+    drawConnectorLines(ctx, getOpenEdgeForSideGroup(corners, sideGroup), outputEdge, alpha);
   }
 
   drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha);
