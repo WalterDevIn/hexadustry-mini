@@ -1,4 +1,4 @@
-import { axialToPixel, pixelToAxial, roundAxial } from "../hex/hexMath.js";
+import { pixelToAxial, roundAxial } from "../hex/hexMath.js";
 import { getBuildingDefinition, getBuildingFootprint, getBuildingRotationCount } from "../content/buildingDefinitions.js";
 import { requestBuildAt, requestDeconstructAt } from "../systems/constructionSystem.js";
 
@@ -27,7 +27,10 @@ function getPointerWorldPoint(canvas, gameState, event) {
 function getFootprintCenterOffset(footprint, hexSize) {
   const total = footprint.reduce(
     (sum, hex) => {
-      const center = axialToPixel(hex, hexSize);
+      const center = {
+        x: hexSize * Math.sqrt(3) * (hex.q + hex.r / 2),
+        y: hexSize * 1.5 * hex.r,
+      };
 
       return {
         x: sum.x + center.x,
@@ -131,15 +134,7 @@ export function bindBuildPlacementInput(canvas, gameState) {
         return;
       }
 
-      const construction = requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
-
-      if (construction) {
-        gameState.playerAimLock = {
-          constructionId: construction.id,
-          target: axialToPixel(hoveredHex, gameState.mapWorld.hexSize),
-        };
-      }
-
+      requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
       event.preventDefault();
     }
 
