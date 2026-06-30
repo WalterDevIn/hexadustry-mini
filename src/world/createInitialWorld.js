@@ -1,3 +1,4 @@
+import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
 import { makeHexKey } from "../hex/hexMath.js";
 
 export const MAP_LAYERS = {
@@ -62,14 +63,51 @@ function placeNaturalBlock(world, q, r, blockType, hp) {
   };
 }
 
-function placeBuilding(world, building) {
-  const tile = createWorldTile(world, building.q, building.r);
+function getAbsoluteFootprint(q, r, footprint) {
+  return footprint.map((hex) => ({
+    q: q + hex.q,
+    r: r + hex.r,
+  }));
+}
 
-  world.buildings.push({
+function placeBuilding(world, building) {
+  const footprint = building.footprint ?? [{ q: 0, r: 0 }];
+  const occupiedHexes = building.occupiedHexes ?? getAbsoluteFootprint(building.q, building.r, footprint);
+  const placedBuilding = {
     ...building,
+    footprint,
+    occupiedHexes,
     layer: MAP_LAYERS.surface,
+  };
+
+  world.buildings.push(placedBuilding);
+
+  for (const hex of occupiedHexes) {
+    const tile = createWorldTile(world, hex.q, hex.r);
+    tile.layers.surface.buildingId = placedBuilding.id;
+  }
+}
+
+function placeInitialCore(world, q, r) {
+  const definition = getBuildingDefinition("coreBlock");
+  const footprint = getBuildingFootprint(definition);
+  const occupiedHexes = getAbsoluteFootprint(q, r, footprint);
+
+  placeBuilding(world, {
+    id: "core-01",
+    definitionId: definition.id,
+    type: definition.type,
+    q,
+    r,
+    hp: definition.hp,
+    maxHp: definition.maxHp,
+    solid: definition.solid,
+    directionMode: definition.directionMode,
+    footprint,
+    occupiedHexes,
+    constructed: true,
+    cost: { ...definition.cost },
   });
-  tile.layers.surface.buildingId = building.id;
 }
 
 export function getTile(world, q, r) {
@@ -120,16 +158,7 @@ export function createInitialWorld() {
   placeNaturalBlock(world, 4, -1, "stone", 180);
   placeNaturalBlock(world, -5, 3, "scrap", 120);
 
-  placeBuilding(world, {
-    id: "core-01",
-    type: "core",
-    q: 0,
-    r: 0,
-    hp: 500,
-    maxHp: 500,
-    solid: true,
-    constructed: false,
-  });
+  placeInitialCore(world, 0, 0);
 
   placeBuilding(world, {
     id: "drill-01",
