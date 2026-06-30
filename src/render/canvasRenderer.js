@@ -545,13 +545,48 @@ function drawBuildPreview(ctx, gameState, size, origin) {
   ctx.restore();
 }
 
+function drawPlayerExhaust(ctx, particles, screenOrigin) {
+  ctx.save();
+
+  for (const particle of particles) {
+    const life = particle.age / particle.lifetime;
+    const alpha = Math.max(0, 1 - life);
+
+    ctx.beginPath();
+    ctx.arc(
+      screenOrigin.x + particle.x,
+      screenOrigin.y + particle.y,
+      particle.radius * (1 - life * 0.35),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = `rgba(255, 226, 64, ${0.38 * alpha})`;
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawEquilateralTriangle(ctx, radius) {
+  ctx.beginPath();
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(Math.cos((2 * Math.PI) / 3) * radius, Math.sin((2 * Math.PI) / 3) * radius);
+  ctx.lineTo(Math.cos((4 * Math.PI) / 3) * radius, Math.sin((4 * Math.PI) / 3) * radius);
+  ctx.closePath();
+}
+
 function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   const transform = ecsWorld.components.transform.get(entityId);
   const renderable = ecsWorld.components.triangleRenderable.get(entityId);
   const team = ecsWorld.components.team.get(entityId);
+  const playerControlled = ecsWorld.components.playerControlled.get(entityId);
   const radius = renderable.radius;
   const x = screenOrigin.x + transform.x;
   const y = screenOrigin.y + transform.y;
+
+  if (team?.id === "player" && playerControlled?.exhaustParticles?.length) {
+    drawPlayerExhaust(ctx, playerControlled.exhaustParticles, screenOrigin);
+  }
 
   ctx.save();
   ctx.translate(x, y);
@@ -561,38 +596,48 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.fillStyle = renderable.fill ?? DEFAULT_RENDER_COLORS.fill;
   ctx.lineWidth = renderable.lineWidth;
 
-  ctx.beginPath();
-  ctx.moveTo(radius, 0);
-  ctx.lineTo(-radius * 0.78, -radius * 0.66);
-  ctx.lineTo(-radius * 0.46, 0);
-  ctx.lineTo(-radius * 0.78, radius * 0.66);
-  ctx.closePath();
+  if (renderable.equilateral) {
+    drawEquilateralTriangle(ctx, radius);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(-radius * 0.78, -radius * 0.66);
+    ctx.lineTo(-radius * 0.46, 0);
+    ctx.lineTo(-radius * 0.78, radius * 0.66);
+    ctx.closePath();
+  }
+
   ctx.fill();
   ctx.stroke();
 
-  ctx.beginPath();
-  ctx.moveTo(-radius * 0.24, 0);
-  ctx.lineTo(radius * 0.58, 0);
-  ctx.stroke();
+  if (!renderable.equilateral) {
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.24, 0);
+    ctx.lineTo(radius * 0.58, 0);
+    ctx.stroke();
+  }
 
   ctx.restore();
 
-  ctx.save();
-  ctx.font = "11px Courier New";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = renderable.labelColor ?? DEFAULT_RENDER_COLORS.label;
-  ctx.fillText(renderable.label, x, y + radius + 14);
+  if (renderable.showLabel !== false) {
+    ctx.save();
+    ctx.font = "11px Courier New";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = renderable.labelColor ?? DEFAULT_RENDER_COLORS.label;
+    ctx.fillText(renderable.label, x, y + radius + 14);
+    ctx.restore();
+  }
 
   if (team?.id === "player") {
+    ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
     ctx.strokeStyle = renderable.aura ?? DEFAULT_RENDER_COLORS.aura;
     ctx.lineWidth = 1;
     ctx.stroke();
+    ctx.restore();
   }
-
-  ctx.restore();
 }
 
 function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
