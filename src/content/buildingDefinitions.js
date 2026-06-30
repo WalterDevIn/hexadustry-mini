@@ -44,29 +44,13 @@ export const BUILDING_DEFINITIONS = {
     maxHp: 360,
     solid: true,
     directionMode: "two-way",
+    centerPreviewOnMouse: true,
     footprint: [
-      { q: -2 / 3, r: 1 / 3 },
-      { q: 1 / 3, r: 1 / 3 },
-      { q: 1 / 3, r: -2 / 3 },
-    ],
-    footprintRotations: [
-      [
-        { q: -2 / 3, r: 1 / 3 },
-        { q: 1 / 3, r: 1 / 3 },
-        { q: 1 / 3, r: -2 / 3 },
-      ],
-      [
-        { q: -1 / 3, r: -1 / 3 },
-        { q: 2 / 3, r: -1 / 3 },
-        { q: -1 / 3, r: 2 / 3 },
-      ],
-    ],
-    occupiedFootprint: [
       { q: 0, r: 0 },
       { q: 1, r: 0 },
       { q: 1, r: -1 },
     ],
-    occupiedFootprintRotations: [
+    footprintRotations: [
       [
         { q: 0, r: 0 },
         { q: 1, r: 0 },
@@ -134,16 +118,6 @@ export function getBuildingFootprint(definition, rotationIndex = 0) {
   }
 
   return definition?.footprint ?? [{ q: 0, r: 0 }];
-}
-
-export function getBuildingOccupiedFootprint(definition, rotationIndex = 0) {
-  const rotations = definition?.occupiedFootprintRotations;
-
-  if (rotations?.length) {
-    return rotations[rotationIndex % rotations.length];
-  }
-
-  return definition?.occupiedFootprint ?? getBuildingFootprint(definition, rotationIndex);
 }
 
 export function getBuildingRotationCount(definition) {
