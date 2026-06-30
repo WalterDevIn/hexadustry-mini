@@ -86,7 +86,7 @@ button {
   right: 16px;
   bottom: 16px;
   z-index: 3;
-  width: min(348px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - 32px));
   border: 1px solid var(--line-mid);
   background: rgba(0, 0, 0, 0.78);
   color: var(--text);
@@ -113,12 +113,28 @@ button {
   opacity: 0.68;
 }
 
+.build-menu__main {
+  display: flex;
+  align-items: stretch;
+  min-height: 112px;
+}
+
+.build-menu__content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
 .build-menu__tabs {
   display: grid;
-  grid-template-columns: repeat(7, 34px);
+  width: 86px;
+  grid-template-columns: repeat(2, 34px);
+  align-content: start;
   justify-content: center;
   gap: 6px;
   padding: 8px;
+  border-left: 1px solid var(--line-dim);
 }
 
 .build-menu__tab {
@@ -159,9 +175,8 @@ button {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  min-height: 36px;
+  min-height: 32px;
   padding: 8px 10px;
-  border-top: 1px solid var(--line-dim);
 }
 
 .build-menu__body span {
@@ -174,17 +189,16 @@ button {
 }
 
 .build-menu__blocks {
-  display: grid;
-  grid-template-columns: repeat(3, 86px);
-  justify-content: center;
-  gap: 8px;
+  display: flex;
   min-height: 78px;
-  padding: 8px;
-  border-top: 1px solid var(--line-dim);
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 8px 8px;
 }
 
 .build-menu__block {
   display: flex;
+  flex: 0 0 86px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -229,8 +243,8 @@ button {
 }
 
 .build-menu__empty {
-  grid-column: 1 / -1;
   align-self: center;
+  min-width: 96px;
   color: rgba(255, 255, 255, 0.48);
   font-size: 10px;
 }
