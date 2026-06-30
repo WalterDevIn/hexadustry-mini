@@ -6,6 +6,12 @@ const BUILDABLE_TYPES = new Set(["wall", "core"]);
 
 let nextConstructionOperationOrder = 1;
 
+function emitBuildResourcesChanged() {
+  if (typeof document === "undefined") return;
+
+  document.dispatchEvent(new CustomEvent("build-resources-changed"));
+}
+
 function hasEnoughResources(resources, cost) {
   return Object.entries(cost).every(([resourceType, amount]) => {
     return (resources[resourceType] ?? 0) >= amount;
@@ -164,6 +170,31 @@ export function isConstructionModeLocked(gameState) {
     || gameState.mapWorld.pendingDeconstructions.length > 0;
 }
 
+export function cancelConstructionQueue(gameState) {
+  const world = gameState.mapWorld;
+
+  for (const construction of world.pendingConstructions) {
+    const definition = getBuildingDefinition(construction.definitionId);
+
+    if (definition) {
+      addResources(world.resources, definition.cost);
+    }
+  }
+
+  for (const deconstruction of world.pendingDeconstructions) {
+    const building = world.buildings.find((candidate) => candidate.id === deconstruction.buildingId);
+
+    if (building) {
+      building.deconstructing = false;
+    }
+  }
+
+  world.pendingConstructions = [];
+  world.pendingDeconstructions = [];
+  gameState.playerAimLock = null;
+  emitBuildResourcesChanged();
+}
+
 export function getSelectedBuildFootprint(gameState) {
   const selectedBlockId = gameState.ui.buildMenu.selectedBlockId;
   const rotationIndex = gameState.ui.buildMenu.rotationIndex;
@@ -189,6 +220,7 @@ export function requestBuildAt(gameState, q, r) {
   if (!hasEnoughResources(gameState.mapWorld.resources, definition.cost)) return null;
 
   subtractResources(gameState.mapWorld.resources, definition.cost);
+  emitBuildResourcesChanged();
 
   const construction = {
     id: createConstructionId(definition, q, r),
@@ -268,7 +300,11 @@ export function constructionSystem(gameState, dt) {
 
     if (!definition) continue;
 
-    if (isFootprintOccupied(world, construction.occupiedHexes)) continue;
+    if (isFootprintOccupied(world, construction.occupiedHexes)) {
+      addResources(world.resources, definition.cost);
+      emitBuildResourcesChanged();
+      continue;
+    }
 
     const building = createBuildingFromConstruction(construction, definition);
 
@@ -287,6 +323,7 @@ export function constructionSystem(gameState, dt) {
 
     removeBuilding(world, building);
     addResources(world.resources, deconstruction.refundCost);
+    emitBuildResourcesChanged();
   }
 
   if (!isConstructionModeLocked(gameState)) {
