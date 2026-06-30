@@ -3,6 +3,13 @@ import { axialToPixel, buildHexPolygon, generateVisibleHexes, hexCorner } from "
 import { ensureChunksForHexes } from "../world/chunkedCaveGeneration.js";
 import { getTile, MAP_LAYERS } from "../world/createInitialWorld.js";
 
+const DEFAULT_RENDER_COLORS = {
+  stroke: "rgba(255, 255, 255, 0.96)",
+  fill: "rgba(0, 0, 0, 0.74)",
+  label: "rgba(255, 255, 255, 0.9)",
+  aura: "rgba(255, 255, 255, 0.22)",
+};
+
 const ENTITY_GLYPHS = {
   core: "CORE",
   drill: "DRL",
@@ -186,8 +193,8 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.translate(x, y);
   ctx.rotate(transform.rotation);
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.96)";
-  ctx.fillStyle = "rgba(0, 0, 0, 0.74)";
+  ctx.strokeStyle = renderable.stroke ?? DEFAULT_RENDER_COLORS.stroke;
+  ctx.fillStyle = renderable.fill ?? DEFAULT_RENDER_COLORS.fill;
   ctx.lineWidth = renderable.lineWidth;
 
   ctx.beginPath();
@@ -210,13 +217,13 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.font = "11px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.fillStyle = renderable.labelColor ?? renderable.label ?? DEFAULT_RENDER_COLORS.label;
   ctx.fillText(renderable.label, x, y + radius + 14);
 
   if (team?.id === "player") {
     ctx.beginPath();
     ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+    ctx.strokeStyle = renderable.aura ?? DEFAULT_RENDER_COLORS.aura;
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -234,8 +241,8 @@ function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(transform.rotation);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.88)";
-  ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
+  ctx.strokeStyle = renderable.stroke ?? DEFAULT_RENDER_COLORS.stroke;
+  ctx.fillStyle = renderable.fill ?? DEFAULT_RENDER_COLORS.fill;
   ctx.lineWidth = renderable.lineWidth;
 
   ctx.beginPath();
@@ -254,7 +261,7 @@ function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.font = "10px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.fillStyle = renderable.labelColor ?? renderable.label ?? DEFAULT_RENDER_COLORS.label;
   ctx.fillText(renderable.label, x, y + radius + 12);
   ctx.restore();
 }
