@@ -94,8 +94,11 @@ export function createInitialWorld() {
       },
     },
     buildings: [],
+    pendingConstructions: [],
     resources: {
       copper: 0,
+      lead: 0,
+      graphite: 0,
     },
   };
 
@@ -119,6 +122,8 @@ export function createInitialWorld() {
     r: 0,
     hp: 500,
     maxHp: 500,
+    solid: true,
+    constructed: false,
   });
 
   placeBuilding(world, {
@@ -128,6 +133,8 @@ export function createInitialWorld() {
     r: 1,
     resourceType: "copper",
     progress: 0,
+    solid: true,
+    constructed: false,
   });
 
   placeBuilding(world, {
@@ -136,6 +143,8 @@ export function createInitialWorld() {
     q: -1,
     r: 1,
     direction: 0,
+    solid: false,
+    constructed: false,
   });
 
   placeBuilding(world, {
@@ -144,6 +153,8 @@ export function createInitialWorld() {
     q: 0,
     r: 1,
     direction: 1,
+    solid: false,
+    constructed: false,
   });
 
   placeBuilding(world, {
@@ -153,6 +164,8 @@ export function createInitialWorld() {
     r: -1,
     range: 3,
     reload: 0,
+    solid: true,
+    constructed: false,
   });
 
   return world;
