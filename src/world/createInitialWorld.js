@@ -1,12 +1,29 @@
 import { makeHexKey } from "../hex/hexMath.js";
 
+export const MAP_LAYERS = {
+  ground: "ground",
+  surface: "surface",
+  air: "air",
+};
+
 function createTile(q, r) {
   return {
     q,
     r,
-    terrain: "basalt",
-    ore: null,
-    buildingId: null,
+    layers: {
+      ground: {
+        terrain: "basalt",
+        ore: null,
+      },
+      surface: {
+        naturalBlock: null,
+        buildingId: null,
+        groundUnitId: null,
+      },
+      air: {
+        flyingUnitIds: [],
+      },
+    },
   };
 }
 
@@ -25,17 +42,29 @@ function getOrCreateTile(tileMap, q, r) {
 function placeOre(tileMap, q, r, oreType, amount) {
   const tile = getOrCreateTile(tileMap, q, r);
 
-  tile.ore = {
+  tile.layers.ground.ore = {
     type: oreType,
     amount,
+  };
+}
+
+function placeNaturalBlock(tileMap, q, r, blockType, hp) {
+  const tile = getOrCreateTile(tileMap, q, r);
+
+  tile.layers.surface.naturalBlock = {
+    type: blockType,
+    hp,
   };
 }
 
 function placeBuilding(world, building) {
   const tile = getOrCreateTile(world.tileMap, building.q, building.r);
 
-  world.buildings.push(building);
-  tile.buildingId = building.id;
+  world.buildings.push({
+    ...building,
+    layer: MAP_LAYERS.surface,
+  });
+  tile.layers.surface.buildingId = building.id;
 }
 
 export function getTile(world, q, r) {
@@ -47,6 +76,17 @@ export function createInitialWorld() {
   const world = {
     mapRadius: 512,
     tileMap: new Map(),
+    layers: {
+      ground: {
+        description: "Suelo: terreno base y minerales.",
+      },
+      surface: {
+        description: "Capa terrestre: unidades terrestres, bloques naturales y bloques construidos.",
+      },
+      air: {
+        description: "Capa aerea: jugador y unidades voladoras.",
+      },
+    },
     buildings: [],
     resources: {
       copper: 0,
@@ -59,6 +99,10 @@ export function createInitialWorld() {
   placeOre(world.tileMap, 2, -3, "copper", 500);
   placeOre(world.tileMap, 12, -5, "copper", 900);
   placeOre(world.tileMap, -15, 8, "copper", 760);
+
+  placeNaturalBlock(world.tileMap, 3, 0, "stone", 180);
+  placeNaturalBlock(world.tileMap, 4, -1, "stone", 180);
+  placeNaturalBlock(world.tileMap, -5, 3, "scrap", 120);
 
   placeBuilding(world, {
     id: "core-01",
