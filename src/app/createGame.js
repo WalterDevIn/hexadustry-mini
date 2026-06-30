@@ -2,6 +2,7 @@ import { createInitialGameState } from "../game/createInitialGameState.js";
 import { bindKeyboardInput } from "../input/keyboardInput.js";
 import { createCanvasRenderer } from "../render/canvasRenderer.js";
 import { enemyAiSystem } from "../systems/enemyAiSystem.js";
+import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
 import { playerControlSystem } from "../systems/playerControlSystem.js";
 
@@ -17,6 +18,7 @@ export function createGame(canvas) {
   function update(dt) {
     playerControlSystem(gameState, dt);
     enemyAiSystem(gameState, dt);
+    groundEnemySystem(gameState, dt);
     movementSystem(gameState, dt);
   }
 
