@@ -35,7 +35,7 @@ export const BUILDING_DEFINITIONS = {
     footprint: [
       { q: 0, r: 0 },
       { q: 1, r: 0 },
-      { q: 0, r: 1 },
+      { q: 1, r: -1 },
     ],
     buildComponentCount: 3,
     buildSecondsPerComponent: 0.18,
