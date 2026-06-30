@@ -15,6 +15,7 @@ Controles actuales:
 WASD / Flechas = mover nave del jugador
 Mouse = apuntado del jugador y de la torreta montada
 Click izquierdo = dispara si no hay bloque seleccionado / coloca bloque seleccionado
+Click izquierdo sostenido = arrastra y encola bloques sobre el rastro
 Click derecho = iniciar deconstruccion o deseleccionar bloque si no hay nada deconstruible
 R = rotar el bloque seleccionado cuando tenga rotaciones
 ```
@@ -35,7 +36,7 @@ La version actual contiene:
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador en capa aerea.
-- Jugador con rotacion visual suave hacia el mouse o hacia la construccion activa.
+- Jugador con rotacion visual suave hacia el mouse.
 - Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
 - Jugador como triangulo equilatero amarillo de diametro visual igual al 80% de un hex.
 - Particulas de escape detras del jugador al moverse, con mayor emision a mayor velocidad.
@@ -45,8 +46,9 @@ La version actual contiene:
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Recursos infinitos para pruebas de construccion.
 - Preview tenue del bloque seleccionado siguiendo el mouse.
-- Construccion diferida con preview translucido.
-- Deconstruccion diferida con click derecho.
+- Construcciones y deconstrucciones encoladas con siluetas translucidas.
+- Una sola operacion de construccion/deconstruccion avanza por vez; las demas quedan como previas en espera.
+- Ritmo de construccion y deconstruccion multiplicado por 4 respecto del tiempo base del bloque.
 - ECS minimo.
 - Enemigos iniciales desactivados temporalmente.
 
@@ -120,14 +122,12 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
-- `constructionSystem`: procesa construcciones y deconstrucciones pendientes.
+- `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez y mantiene el resto como cola visual.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
 
 ## Jugador
 
 El jugador rota suavemente hacia el mouse. La rotacion visual no depende de la direccion de movimiento.
-
-Mientras una construccion esta en curso, el jugador rota hacia el hex donde empezo esa construccion. Cuando la construccion termina, vuelve a rotar hacia el mouse, sin salto instantaneo.
 
 El jugador es un triangulo equilatero amarillo. Su diametro visual es igual al 80% de un hexagono.
 
@@ -178,11 +178,12 @@ Flujo:
 2. Seleccionar un muro.
 3. Mover el mouse para ver la previa tenue.
 4. Rotar con `R` si el muro seleccionado lo permite.
-5. Hacer click izquierdo sobre un hex libre.
-6. Aparece una construccion translucida.
-7. Al terminar el tiempo de construccion, aparece el muro solido.
-8. Click derecho sobre cualquier hex ocupado por el muro inicia deconstruccion.
-9. Al terminar el tiempo de deconstruccion, el muro desaparece y devuelve sus materiales.
+5. Hacer click izquierdo sobre un hex libre o arrastrar con click izquierdo sostenido.
+6. Cada bloque valido del rastro entra como silueta translucida en la cola de construccion.
+7. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
+8. Al terminar una construccion, aparece el muro solido y empieza la siguiente operacion de la cola.
+9. Click derecho sobre cualquier hex ocupado por un muro construido encola deconstruccion.
+10. Al terminar la deconstruccion, el muro desaparece y devuelve sus materiales.
 
 ## Capas del mapa
 
