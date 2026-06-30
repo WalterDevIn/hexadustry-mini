@@ -114,6 +114,7 @@ export function bindBuildPlacementInput(canvas, gameState) {
 
   function handlePointerLeave() {
     gameState.input.pointerWorld = null;
+    gameState.input.primaryFire = false;
     gameState.ui.buildMenu.hoveredHex = null;
   }
 
@@ -124,6 +125,12 @@ export function bindBuildPlacementInput(canvas, gameState) {
     if (!hoveredHex) return;
 
     if (event.button === 0) {
+      if (!gameState.ui.buildMenu.selectedBlockId) {
+        gameState.input.primaryFire = true;
+        event.preventDefault();
+        return;
+      }
+
       const construction = requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
 
       if (construction) {
@@ -147,6 +154,13 @@ export function bindBuildPlacementInput(canvas, gameState) {
     }
   }
 
+  function handlePointerUp(event) {
+    if (event.button === 0) {
+      gameState.input.primaryFire = false;
+      event.preventDefault();
+    }
+  }
+
   function handleKeyDown(event) {
     if (event.code !== "KeyR") return;
 
@@ -161,6 +175,7 @@ export function bindBuildPlacementInput(canvas, gameState) {
   canvas.addEventListener("pointermove", handlePointerMove);
   canvas.addEventListener("pointerleave", handlePointerLeave);
   canvas.addEventListener("pointerdown", handlePointerDown);
+  window.addEventListener("pointerup", handlePointerUp);
   canvas.addEventListener("contextmenu", handleContextMenu);
   window.addEventListener("keydown", handleKeyDown);
 
@@ -168,6 +183,7 @@ export function bindBuildPlacementInput(canvas, gameState) {
     canvas.removeEventListener("pointermove", handlePointerMove);
     canvas.removeEventListener("pointerleave", handlePointerLeave);
     canvas.removeEventListener("pointerdown", handlePointerDown);
+    window.removeEventListener("pointerup", handlePointerUp);
     canvas.removeEventListener("contextmenu", handleContextMenu);
     window.removeEventListener("keydown", handleKeyDown);
   };
