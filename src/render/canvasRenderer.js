@@ -40,6 +40,7 @@ const ROCK_CLUSTER_FOOTPRINTS = {
   ],
 };
 
+const ROCK_CLUSTER_ORDER = ["huge", "largeA", "largeB", "single"];
 const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 
 const ENTITY_GLYPHS = {
@@ -264,23 +265,6 @@ function drawRockClusterShape(ctx, footprint, naturalBlockType, size, alpha = 1)
   strokeSegments(ctx, outerSegments);
 }
 
-function getStableHash(q, r, seed = 0) {
-  let hash = (q * 374761393 + r * 668265263 + seed * 2246822519) | 0;
-  hash = (hash ^ (hash >>> 13)) * 1274126177;
-
-  return (hash ^ (hash >>> 16)) >>> 0;
-}
-
-function getRockClusterPreference(q, r, seed) {
-  const roll = getStableHash(q, r, seed) % 100;
-
-  if (roll < 18) return ["huge", "largeA", "largeB", "single"];
-  if (roll < 58) return ["largeA", "largeB", "huge", "single"];
-  if (roll < 82) return ["largeB", "largeA", "huge", "single"];
-
-  return ["single"];
-}
-
 function getGeneratedNaturalBlock(mapWorld, q, r) {
   const naturalBlock = getTile(mapWorld, q, r).layers.surface.naturalBlock;
 
@@ -289,58 +273,96 @@ function getGeneratedNaturalBlock(mapWorld, q, r) {
   return naturalBlock;
 }
 
-function canPlaceRockVisualCluster(mapWorld, anchor, footprint, consumedKeys, naturalBlockType) {
+function canPlaceRockVisualCluster(mapWorld, anchor, footprint, naturalBlockType) {
   for (const relativeHex of footprint) {
     const q = anchor.q + relativeHex.q;
     const r = anchor.r + relativeHex.r;
     const key = makeRelativeKey(q, r);
     const naturalBlock = getGeneratedNaturalBlock(mapWorld, q, r);
 
-    if (consumedKeys.has(key)) return false;
+    if (mapWorld.rockVisualClusterOccupied.has(key)) return false;
     if (naturalBlock?.type !== naturalBlockType) return false;
   }
 
   return true;
 }
 
-function consumeRockVisualCluster(anchor, footprint, consumedKeys) {
-  for (const relativeHex of footprint) {
-    consumedKeys.add(makeRelativeKey(anchor.q + relativeHex.q, anchor.r + relativeHex.r));
+function occupyRockVisualCluster(mapWorld, cluster) {
+  for (const relativeHex of cluster.footprint) {
+    mapWorld.rockVisualClusterOccupied.add(makeRelativeKey(cluster.q + relativeHex.q, cluster.r + relativeHex.r));
   }
 }
 
-function chooseRockVisualFootprint(mapWorld, anchor, naturalBlockType, consumedKeys) {
-  const preferredFootprints = getRockClusterPreference(anchor.q, anchor.r, mapWorld.seed);
-
-  for (const footprintId of preferredFootprints) {
+function createRockVisualCluster(mapWorld, anchor, naturalBlockType) {
+  for (const footprintId of ROCK_CLUSTER_ORDER) {
     const footprint = ROCK_CLUSTER_FOOTPRINTS[footprintId];
 
-    if (canPlaceRockVisualCluster(mapWorld, anchor, footprint, consumedKeys, naturalBlockType)) {
-      return footprint;
+    if (canPlaceRockVisualCluster(mapWorld, anchor, footprint, naturalBlockType)) {
+      return {
+        q: anchor.q,
+        r: anchor.r,
+        naturalBlockType,
+        footprintId,
+        footprint,
+      };
     }
   }
 
-  return ROCK_CLUSTER_FOOTPRINTS.single;
+  return {
+    q: anchor.q,
+    r: anchor.r,
+    naturalBlockType,
+    footprintId: "single",
+    footprint: ROCK_CLUSTER_FOOTPRINTS.single,
+  };
 }
 
-function drawGeneratedRockClusters(ctx, mapWorld, visibleHexes, size, origin) {
-  const consumedKeys = new Set();
-  const sortedHexes = [...visibleHexes].sort((a, b) => a.q - b.q || a.r - b.r);
+function ensureRockVisualClusters(mapWorld, visibleHexes) {
+  const candidates = [];
 
-  for (const hex of sortedHexes) {
+  for (const hex of visibleHexes) {
     const key = makeHexKeyFromHex(hex);
     const naturalBlock = getGeneratedNaturalBlock(mapWorld, hex.q, hex.r);
 
-    if (!naturalBlock || consumedKeys.has(key)) continue;
+    if (!naturalBlock) continue;
+    if (mapWorld.rockVisualClusters.has(key)) continue;
+    if (mapWorld.rockVisualClusterOccupied.has(key)) continue;
 
-    const footprint = chooseRockVisualFootprint(mapWorld, hex, naturalBlock.type, consumedKeys);
-    const center = axialToPixel(hex, size, origin);
+    candidates.push({
+      ...hex,
+      key,
+      naturalBlockType: naturalBlock.type,
+    });
+  }
 
-    consumeRockVisualCluster(hex, footprint, consumedKeys);
+  candidates.sort((a, b) => a.q - b.q || a.r - b.r);
+
+  for (const candidate of candidates) {
+    if (mapWorld.rockVisualClusters.has(candidate.key)) continue;
+    if (mapWorld.rockVisualClusterOccupied.has(candidate.key)) continue;
+
+    const cluster = createRockVisualCluster(mapWorld, candidate, candidate.naturalBlockType);
+
+    mapWorld.rockVisualClusters.set(candidate.key, cluster);
+    occupyRockVisualCluster(mapWorld, cluster);
+  }
+}
+
+function drawGeneratedRockClusters(ctx, mapWorld, visibleHexes, size, origin) {
+  ensureRockVisualClusters(mapWorld, visibleHexes);
+
+  for (const cluster of mapWorld.rockVisualClusters.values()) {
+    const anchorCenter = axialToPixel(cluster, size, origin);
+    const clusterCenter = getWallCenter(cluster.footprint, size);
+
+    if (anchorCenter.x + clusterCenter.x < -size * 3) continue;
+    if (anchorCenter.x + clusterCenter.x > ctx.canvas.clientWidth + size * 3) continue;
+    if (anchorCenter.y + clusterCenter.y < -size * 3) continue;
+    if (anchorCenter.y + clusterCenter.y > ctx.canvas.clientHeight + size * 3) continue;
 
     ctx.save();
-    ctx.translate(center.x, center.y);
-    drawRockClusterShape(ctx, footprint, naturalBlock.type, size, 1);
+    ctx.translate(anchorCenter.x, anchorCenter.y);
+    drawRockClusterShape(ctx, cluster.footprint, cluster.naturalBlockType, size, 1);
     ctx.restore();
   }
 }
