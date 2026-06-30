@@ -1,5 +1,6 @@
 import { getBuildingFootprint, getBuildingsByCategory } from "../content/buildingDefinitions.js";
-import { isConstructionModeLocked } from "../systems/constructionSystem.js";
+
+const MATERIAL_ORDER = ["copper", "lead", "graphite"];
 
 export const BUILD_CATEGORIES = [
   { id: "turrets", label: "TORRETAS", icon: "⌖" },
@@ -77,10 +78,51 @@ function syncBlockSelection(gameState, blockList) {
   }
 }
 
-function showConstructionLockStatus(status) {
-  if (status) {
-    status.textContent = "construccion en curso";
+function formatMaterialAmount(amount) {
+  if (amount === Number.POSITIVE_INFINITY) return "∞";
+
+  return String(amount);
+}
+
+function getOrderedCostEntries(cost) {
+  const knownEntries = MATERIAL_ORDER
+    .filter((material) => (cost[material] ?? 0) > 0)
+    .map((material) => [material, cost[material]]);
+  const extraEntries = Object.entries(cost).filter(([material, amount]) => {
+    return !MATERIAL_ORDER.includes(material) && amount > 0;
+  });
+
+  return [...knownEntries, ...extraEntries];
+}
+
+function formatCostStatus(gameState, definition) {
+  const entries = getOrderedCostEntries(definition.cost);
+
+  if (entries.length === 0) {
+    return `${definition.label}: sin coste`;
   }
+
+  const materialLines = entries.map(([material, amount]) => {
+    const available = gameState.mapWorld.resources[material] ?? 0;
+
+    return `${material}: ${amount}/${formatMaterialAmount(available)}`;
+  });
+
+  return `${definition.label}: ${materialLines.join(" | ")}`;
+}
+
+function showSelectedBlockStatus(gameState, status) {
+  if (!status) return;
+
+  const definitions = getBuildingsByCategory(gameState.ui.buildMenu.activeCategory);
+  const definition = definitions.find((candidate) => candidate.id === gameState.ui.buildMenu.selectedBlockId);
+
+  if (!definition) {
+    status.textContent = "sin bloque seleccionado";
+    return;
+  }
+
+  status.textContent = formatCostStatus(gameState, definition);
 }
 
 function renderBlockButtons(gameState, blockList, status) {
@@ -114,20 +156,10 @@ function renderBlockButtons(gameState, blockList, status) {
     button.append(createBlockPreview(definition), label);
 
     button.addEventListener("click", () => {
-      if (isConstructionModeLocked(gameState)) {
-        showConstructionLockStatus(status);
-        syncBlockSelection(gameState, blockList);
-        return;
-      }
-
       gameState.ui.buildMenu.selectedBlockId = definition.id;
       gameState.ui.buildMenu.rotationIndex = 0;
       syncBlockSelection(gameState, blockList);
-
-      if (status) {
-        const rotateHelp = definition.directionMode === "two-way" ? " / R rota" : "";
-        status.textContent = `${definition.label}: listo${rotateHelp}`;
-      }
+      showSelectedBlockStatus(gameState, status);
     });
 
     blockList.append(button);
@@ -141,11 +173,6 @@ export function bindBuildMenu(gameState) {
   const blockList = document.querySelector("#build-menu-block-list");
 
   function selectCategory(categoryId) {
-    if (isConstructionModeLocked(gameState)) {
-      showConstructionLockStatus(status);
-      return;
-    }
-
     gameState.ui.buildMenu.activeCategory = categoryId;
     gameState.ui.buildMenu.selectedBlockId = null;
     gameState.ui.buildMenu.rotationIndex = 0;
@@ -177,15 +204,22 @@ export function bindBuildMenu(gameState) {
     selectCategory(categoryId);
   }
 
+  function handleResourcesChanged() {
+    showSelectedBlockStatus(gameState, status);
+  }
+
   for (const tab of tabs) {
     tab.addEventListener("click", handleTabClick);
   }
 
+  document.addEventListener("build-resources-changed", handleResourcesChanged);
   selectCategory(gameState.ui.buildMenu.activeCategory);
 
   return () => {
     for (const tab of tabs) {
       tab.removeEventListener("click", handleTabClick);
     }
+
+    document.removeEventListener("build-resources-changed", handleResourcesChanged);
   };
 }
