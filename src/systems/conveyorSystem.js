@@ -12,6 +12,10 @@ function getDirection(building) {
   return HEX_DIRECTIONS[getDirectionIndex(building)];
 }
 
+function getOppositeDirectionIndex(directionIndex) {
+  return (directionIndex + 3) % HEX_DIRECTIONS.length;
+}
+
 function getBuildingAt(world, q, r) {
   const buildingId = world.getOrCreateTile(q, r).layers.surface.buildingId;
 
@@ -42,6 +46,7 @@ function deliverToCore(world, item) {
 function deliverItem(world, conveyorBuilding) {
   const conveyor = conveyorBuilding.conveyor;
   const item = conveyor.item;
+  const targetDirectionIndex = getDirectionIndex(conveyorBuilding);
   const target = getTargetBuilding(world, conveyorBuilding);
 
   if (!item || !canReceiveItem(target)) return false;
@@ -51,7 +56,10 @@ function deliverItem(world, conveyorBuilding) {
   }
 
   if (target.type === "conveyor") {
-    target.conveyor.item = item;
+    target.conveyor.item = {
+      type: item.type,
+      entryDirection: getOppositeDirectionIndex(targetDirectionIndex),
+    };
     target.conveyor.progress = 0;
   }
 
@@ -61,12 +69,15 @@ function deliverItem(world, conveyorBuilding) {
   return true;
 }
 
-function takeFromDrill(drillBuilding) {
+function takeFromDrill(drillBuilding, entryDirection) {
   const drill = drillBuilding.drill;
 
   if (!drill?.storedType || drill.storedAmount <= 0) return null;
 
-  const item = { type: drill.storedType };
+  const item = {
+    type: drill.storedType,
+    entryDirection,
+  };
 
   drill.storedAmount -= 1;
 
@@ -89,7 +100,7 @@ function tryPullFromAdjacentDrill(world, conveyorBuilding) {
 
     if (source?.type !== "drill") continue;
 
-    const item = takeFromDrill(source);
+    const item = takeFromDrill(source, directionIndex);
 
     if (item) return item;
   }
