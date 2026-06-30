@@ -148,7 +148,7 @@ export function createInitialWorld() {
     resources: {
       copper: 260,
       lead: 80,
-      graphite: 40,
+      carbon: 40,
     },
   };
 
