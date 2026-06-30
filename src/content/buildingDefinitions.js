@@ -26,6 +26,21 @@ const HUGE_FOOTPRINT = [
   { q: 0, r: 1 },
 ];
 
+const LARGE_TRIANGLE_FOOTPRINT = [
+  { q: 0, r: 0 },
+  { q: 1, r: 0 },
+  { q: 1, r: -1 },
+];
+
+const LARGE_TRIANGLE_ROTATIONS = [
+  LARGE_TRIANGLE_FOOTPRINT,
+  [
+    { q: 0, r: 0 },
+    { q: 1, r: 0 },
+    { q: 0, r: 1 },
+  ],
+];
+
 export const BUILDING_DEFINITIONS = {
   basicWall: {
     id: "basicWall",
@@ -55,23 +70,8 @@ export const BUILDING_DEFINITIONS = {
     solid: true,
     directionMode: "two-way",
     snapMouseToFootprintCenter: true,
-    footprint: [
-      { q: 0, r: 0 },
-      { q: 1, r: 0 },
-      { q: 1, r: -1 },
-    ],
-    footprintRotations: [
-      [
-        { q: 0, r: 0 },
-        { q: 1, r: 0 },
-        { q: 1, r: -1 },
-      ],
-      [
-        { q: 0, r: 0 },
-        { q: 1, r: 0 },
-        { q: 0, r: 1 },
-      ],
-    ],
+    footprint: LARGE_TRIANGLE_FOOTPRINT,
+    footprintRotations: LARGE_TRIANGLE_ROTATIONS,
     buildComponentCount: 3,
     buildSecondsPerComponent: 0.18,
     minimumBuildSeconds: 0.45,
@@ -91,6 +91,30 @@ export const BUILDING_DEFINITIONS = {
     buildComponentCount: 7,
     buildSecondsPerComponent: 0.18,
     minimumBuildSeconds: 0.75,
+  },
+  commonDrill: {
+    id: "commonDrill",
+    type: "drill",
+    label: "TALADRO COMUN",
+    category: "extractors",
+    layer: "surface",
+    cost: {
+      copper: 36,
+      lead: 0,
+      graphite: 0,
+    },
+    hp: 300,
+    maxHp: 300,
+    solid: true,
+    directionMode: "two-way",
+    snapMouseToFootprintCenter: true,
+    footprint: LARGE_TRIANGLE_FOOTPRINT,
+    footprintRotations: LARGE_TRIANGLE_ROTATIONS,
+    drillRate: 1,
+    storageCapacity: 10,
+    buildComponentCount: 3,
+    buildSecondsPerComponent: 0.22,
+    minimumBuildSeconds: 0.55,
   },
   coreBlock: {
     id: "coreBlock",
