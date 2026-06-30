@@ -106,7 +106,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
 
   if (building.type === "core") drawCoreShape(ctx, building, size, gameState, 1);
   else if (building.type === "drill") drawCommonDrill(ctx, building, size);
-  else if (building.type === "conveyor") drawTransportBelt(ctx, building, size, 1);
+  else if (building.type === "conveyor") drawTransportBelt(ctx, building, size, 1, gameState.mapWorld);
   else if (building.type === "turret") {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.75, 0, Math.PI * 2);
@@ -173,11 +173,14 @@ export function drawBuildPreview(ctx, gameState, size, origin) {
       ctx,
       {
         type: "conveyor",
+        q: hoveredHex.q,
+        r: hoveredHex.r,
         direction: gameState.ui.buildMenu.rotationIndex,
         conveyor: { beltPhase: 0.22, progress: 0, transferSeconds: definition.transferSeconds ?? 0.33, item: null },
       },
       size,
       0.42,
+      gameState.mapWorld,
     );
   } else {
     drawQueuedBuildPreviewShape(ctx, { footprint }, size);
