@@ -4,6 +4,11 @@ import { getOreColor } from "./terrainRenderer.js";
 const EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 const DIRECTION_COUNT = HEX_DIRECTIONS.length;
 const INNER_SCALE = 0.82;
+const BELT_STROKE = [255, 226, 64];
+
+function yellow(alpha) {
+  return `rgba(${BELT_STROKE[0]}, ${BELT_STROKE[1]}, ${BELT_STROKE[2]}, ${alpha})`;
+}
 
 function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % DIRECTION_COUNT];
@@ -110,7 +115,7 @@ function sameEdge(edgeA, edgeB) {
 
 function drawEdges(ctx, corners, alpha, removedEdges = []) {
   ctx.save();
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.68 * alpha})`;
+  ctx.strokeStyle = yellow(0.72 * alpha);
   ctx.lineWidth = 1.5;
   ctx.lineCap = "butt";
 
@@ -151,7 +156,7 @@ function drawConnectorLines(ctx, inputEdge, outputEdge, alpha) {
   const pairs = getEndpointPair(inputEdge, outputEdge);
 
   ctx.save();
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.68 * alpha})`;
+  ctx.strokeStyle = yellow(0.72 * alpha);
   ctx.lineWidth = 1.5;
   ctx.lineCap = "butt";
 
@@ -224,6 +229,43 @@ function getMiddleRoute(inputEdge, outputEdge) {
   };
 }
 
+function getRouteAngle(route) {
+  return Math.atan2(route.end.y - route.start.y, route.end.x - route.start.x);
+}
+
+function getRouteNormal(route) {
+  const angle = getRouteAngle(route);
+
+  return {
+    x: -Math.sin(angle),
+    y: Math.cos(angle),
+  };
+}
+
+function drawMovingArrow(ctx, route, phase, size, alpha) {
+  const position = getSegmentPoint(route.start, route.end, phase);
+  const angle = getRouteAngle(route);
+  const normal = getRouteNormal(route);
+  const arrowSize = size * 0.18;
+  const arrowOffset = size * 0.12;
+
+  ctx.save();
+  ctx.translate(position.x + normal.x * arrowOffset, position.y + normal.y * arrowOffset);
+  ctx.rotate(angle);
+  ctx.fillStyle = yellow(0.9 * alpha);
+  ctx.strokeStyle = yellow(0.95 * alpha);
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(arrowSize, 0);
+  ctx.lineTo(-arrowSize * 0.72, -arrowSize * 0.62);
+  ctx.lineTo(-arrowSize * 0.34, 0);
+  ctx.lineTo(-arrowSize * 0.72, arrowSize * 0.62);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha) {
   const item = building.conveyor?.item;
   if (!item) return;
@@ -236,9 +278,10 @@ function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alph
 
   const route = getMiddleRoute(inputEdge, outputEdge);
   const position = getSegmentPoint(route.start, route.end, progress);
+  const normal = getRouteNormal(route);
 
   ctx.save();
-  ctx.translate(position.x, position.y);
+  ctx.translate(position.x - normal.x * 3, position.y - normal.y * 3);
   ctx.font = "700 14px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -246,6 +289,14 @@ function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alph
   ctx.fillStyle = getOreColor({ type: item.type });
   ctx.fillText("x", 0, 0);
   ctx.restore();
+}
+
+function getArrowRoute(inputEdgesByWorldSide, outputEdge) {
+  const preferredInput = inputEdgesByWorldSide.get(3) ?? inputEdgesByWorldSide.values().next().value;
+
+  if (!preferredInput) return null;
+
+  return getMiddleRoute(preferredInput, outputEdge);
 }
 
 export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = null) {
@@ -261,6 +312,8 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => {
     return [toWorldSide(localSide, outputSide), inputEdges[index]];
   }));
+  const arrowRoute = getArrowRoute(inputEdgesByWorldSide, outputEdge);
+  const arrowPhase = building.conveyor?.beltPhase ?? 0.22;
 
   ctx.save();
   ctx.rotate(direction.angle);
@@ -270,6 +323,8 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   for (const sideGroup of sideGroups) {
     drawConnectorLines(ctx, getOpenEdgeForSideGroup(innerCorners, sideGroup), outputEdge, alpha);
   }
+
+  if (arrowRoute) drawMovingArrow(ctx, arrowRoute, arrowPhase, size, alpha);
 
   drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha);
   ctx.restore();
