@@ -5,6 +5,7 @@ import { enemyAiSystem } from "../systems/enemyAiSystem.js";
 import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
 import { playerControlSystem } from "../systems/playerControlSystem.js";
+import { bindBuildMenu } from "../ui/buildMenu.js";
 
 const MAX_DT = 1 / 20;
 
@@ -12,6 +13,7 @@ export function createGame(canvas) {
   const gameState = createInitialGameState();
   const renderer = createCanvasRenderer(canvas, gameState);
   const unbindKeyboardInput = bindKeyboardInput(gameState.input);
+  const unbindBuildMenu = bindBuildMenu(gameState);
 
   let animationFrameId = null;
 
@@ -59,6 +61,7 @@ export function createGame(canvas) {
     destroy() {
       stop();
       unbindKeyboardInput();
+      unbindBuildMenu();
       window.removeEventListener("resize", handleResize);
     },
   };
