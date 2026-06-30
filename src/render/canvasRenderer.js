@@ -15,6 +15,7 @@ const ENTITY_GLYPHS = {
   drill: "DRL",
   conveyor: ">>>",
   turret: "TRT",
+  wall: "WALL",
 };
 
 function drawPath(ctx, points) {
@@ -50,6 +51,37 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
     ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
   }
+}
+
+function drawHexWallShape(ctx, size, alpha = 1) {
+  const corners = [];
+
+  for (let i = 0; i < 6; i += 1) {
+    corners.push(hexCorner({ x: 0, y: 0 }, size * 0.82, i));
+  }
+
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.08 * alpha})`;
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.88 * alpha})`;
+  ctx.lineWidth = 2;
+
+  drawPath(ctx, corners);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.62 * alpha})`;
+  ctx.lineWidth = 1.4;
+
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.38, -size * 0.08);
+  ctx.lineTo(-size * 0.08, -size * 0.28);
+  ctx.lineTo(size * 0.36, -size * 0.04);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.28, size * 0.28);
+  ctx.lineTo(size * 0.04, size * 0.08);
+  ctx.lineTo(size * 0.4, size * 0.22);
+  ctx.stroke();
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
@@ -170,6 +202,8 @@ function drawBuilding(ctx, building, size, origin) {
     ctx.moveTo(0, 0);
     ctx.lineTo(radius * 1.05, -radius * 0.25);
     ctx.stroke();
+  } else if (building.type === "wall") {
+    drawHexWallShape(ctx, size, 1);
   }
 
   ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
@@ -178,6 +212,23 @@ function drawBuilding(ctx, building, size, origin) {
   ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
   ctx.fillText(ENTITY_GLYPHS[building.type] ?? "???", 0, radius + size * 0.22);
 
+  ctx.restore();
+}
+
+function drawPendingConstruction(ctx, construction, size, origin) {
+  const center = axialToPixel(construction, size, origin);
+  const progress = Math.min(1, construction.elapsed / construction.totalTime);
+
+  ctx.save();
+  ctx.translate(center.x, center.y);
+  ctx.globalAlpha = 0.28 + progress * 0.38;
+  drawHexWallShape(ctx, size, 0.72);
+
+  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
   ctx.restore();
 }
 
@@ -217,7 +268,7 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.font = "11px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = renderable.labelColor ?? renderable.label ?? DEFAULT_RENDER_COLORS.label;
+  ctx.fillStyle = renderable.labelColor ?? DEFAULT_RENDER_COLORS.label;
   ctx.fillText(renderable.label, x, y + radius + 14);
 
   if (team?.id === "player") {
@@ -261,7 +312,7 @@ function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.font = "10px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = renderable.labelColor ?? renderable.label ?? DEFAULT_RENDER_COLORS.label;
+  ctx.fillStyle = renderable.labelColor ?? DEFAULT_RENDER_COLORS.label;
   ctx.fillText(renderable.label, x, y + radius + 12);
   ctx.restore();
 }
@@ -357,6 +408,10 @@ export function createCanvasRenderer(canvas, gameState) {
     for (const hex of visibleHexes) {
       const tile = getTile(mapWorld, hex.q, hex.r);
       drawSurfaceLayer(ctx, hex, tile, hexSize, origin);
+    }
+
+    for (const construction of mapWorld.pendingConstructions) {
+      drawPendingConstruction(ctx, construction, hexSize, origin);
     }
 
     for (const building of mapWorld.buildings) {
