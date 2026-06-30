@@ -17,6 +17,29 @@ const PLAYER_YELLOW = {
   detail: "rgba(255, 236, 126, 0.88)",
 };
 
+const ROCK_CLUSTER_FOOTPRINTS = {
+  single: [{ q: 0, r: 0 }],
+  largeA: [
+    { q: 0, r: 0 },
+    { q: 1, r: 0 },
+    { q: 1, r: -1 },
+  ],
+  largeB: [
+    { q: 0, r: 0 },
+    { q: 1, r: 0 },
+    { q: 0, r: 1 },
+  ],
+  huge: [
+    { q: 0, r: 0 },
+    { q: 1, r: 0 },
+    { q: 1, r: -1 },
+    { q: 0, r: -1 },
+    { q: -1, r: 0 },
+    { q: -1, r: 1 },
+    { q: 0, r: 1 },
+  ],
+};
+
 const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 
 const ENTITY_GLYPHS = {
@@ -38,31 +61,31 @@ function drawPath(ctx, points) {
 }
 
 function drawGroundLayer(ctx, hex, tile, size, origin) {
-  const polygon = buildHexPolygon(hex, size, origin);
   const groundLayer = tile.layers.ground;
 
-  drawPath(ctx, polygon.corners);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-  ctx.lineWidth = 1;
+  if (!groundLayer.ore) return;
+
+  const polygon = buildHexPolygon(hex, size, origin);
+
+  ctx.beginPath();
+  ctx.arc(polygon.center.x, polygon.center.y, size * 0.16, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  if (groundLayer.ore) {
-    ctx.beginPath();
-    ctx.arc(polygon.center.x, polygon.center.y, size * 0.16, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
-    ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
-  }
+  ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+  ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
 }
 
 function makeRelativeKey(q, r) {
   return `${q},${r}`;
+}
+
+function makeHexKeyFromHex(hex) {
+  return makeRelativeKey(hex.q, hex.r);
 }
 
 function getWallFootprint(source) {
@@ -205,48 +228,120 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
   strokeCornerSegments(ctx, innerSegments, 0.28);
 }
 
-function drawCaveWall(ctx, naturalBlock, size) {
-  const corners = [];
-  const isDenseRock = naturalBlock.type === "dense-rock";
-
-  for (let i = 0; i < 6; i += 1) {
-    corners.push(hexCorner({ x: 0, y: 0 }, size * 0.96, i));
+function getRockClusterStyle(naturalBlockType, alpha) {
+  if (naturalBlockType === "dense-rock") {
+    return {
+      fill: `rgba(255, 255, 255, ${0.08 * alpha})`,
+      stroke: `rgba(255, 255, 255, ${0.84 * alpha})`,
+      lineWidth: 2.1,
+    };
   }
 
-  ctx.fillStyle = isDenseRock
-    ? "rgba(255, 255, 255, 0.09)"
-    : "rgba(255, 255, 255, 0.045)";
-  ctx.strokeStyle = isDenseRock
-    ? "rgba(255, 255, 255, 0.88)"
-    : "rgba(255, 255, 255, 0.68)";
-  ctx.lineWidth = isDenseRock ? 2.2 : 1.6;
+  return {
+    fill: `rgba(255, 255, 255, ${0.04 * alpha})`,
+    stroke: `rgba(255, 255, 255, ${0.58 * alpha})`,
+    lineWidth: 1.5,
+  };
+}
 
-  drawPath(ctx, corners);
-  ctx.fill();
-  ctx.stroke();
+function fillRockFootprint(ctx, footprint, size, fillStyle) {
+  ctx.fillStyle = fillStyle;
 
-  ctx.strokeStyle = isDenseRock
-    ? "rgba(255, 255, 255, 0.72)"
-    : "rgba(255, 255, 255, 0.5)";
-  ctx.lineWidth = isDenseRock ? 1.8 : 1.3;
+  for (const hex of footprint) {
+    drawPath(ctx, getWallCorners(hex, size * 0.98));
+    ctx.fill();
+  }
+}
 
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.5, -size * 0.16);
-  ctx.lineTo(-size * 0.16, -size * 0.38);
-  ctx.lineTo(size * 0.34, -size * 0.14);
-  ctx.stroke();
+function drawRockClusterShape(ctx, footprint, naturalBlockType, size, alpha = 1) {
+  const style = getRockClusterStyle(naturalBlockType, alpha);
+  const outerSegments = getWallBoundarySegments(footprint, size * 0.98);
 
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.32, size * 0.34);
-  ctx.lineTo(size * 0.04, size * 0.12);
-  ctx.lineTo(size * 0.5, size * 0.28);
-  ctx.stroke();
+  fillRockFootprint(ctx, footprint, size, style.fill);
 
-  if (isDenseRock) {
-    ctx.beginPath();
-    ctx.moveTo(-size * 0.08, -size * 0.02);
-    ctx.lineTo(size * 0.18, size * 0.18);
-    ctx.stroke();
+  ctx.strokeStyle = style.stroke;
+  ctx.lineWidth = style.lineWidth;
+  strokeSegments(ctx, outerSegments);
+}
+
+function getStableHash(q, r, seed = 0) {
+  let hash = (q * 374761393 + r * 668265263 + seed * 2246822519) | 0;
+  hash = (hash ^ (hash >>> 13)) * 1274126177;
+
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
+function getRockClusterPreference(q, r, seed) {
+  const roll = getStableHash(q, r, seed) % 100;
+
+  if (roll < 18) return ["huge", "largeA", "largeB", "single"];
+  if (roll < 58) return ["largeA", "largeB", "huge", "single"];
+  if (roll < 82) return ["largeB", "largeA", "huge", "single"];
+
+  return ["single"];
+}
+
+function getGeneratedNaturalBlock(mapWorld, q, r) {
+  const naturalBlock = getTile(mapWorld, q, r).layers.surface.naturalBlock;
+
+  if (!naturalBlock?.generated) return null;
+
+  return naturalBlock;
+}
+
+function canPlaceRockVisualCluster(mapWorld, anchor, footprint, consumedKeys, naturalBlockType) {
+  for (const relativeHex of footprint) {
+    const q = anchor.q + relativeHex.q;
+    const r = anchor.r + relativeHex.r;
+    const key = makeRelativeKey(q, r);
+    const naturalBlock = getGeneratedNaturalBlock(mapWorld, q, r);
+
+    if (consumedKeys.has(key)) return false;
+    if (naturalBlock?.type !== naturalBlockType) return false;
+  }
+
+  return true;
+}
+
+function consumeRockVisualCluster(anchor, footprint, consumedKeys) {
+  for (const relativeHex of footprint) {
+    consumedKeys.add(makeRelativeKey(anchor.q + relativeHex.q, anchor.r + relativeHex.r));
+  }
+}
+
+function chooseRockVisualFootprint(mapWorld, anchor, naturalBlockType, consumedKeys) {
+  const preferredFootprints = getRockClusterPreference(anchor.q, anchor.r, mapWorld.seed);
+
+  for (const footprintId of preferredFootprints) {
+    const footprint = ROCK_CLUSTER_FOOTPRINTS[footprintId];
+
+    if (canPlaceRockVisualCluster(mapWorld, anchor, footprint, consumedKeys, naturalBlockType)) {
+      return footprint;
+    }
+  }
+
+  return ROCK_CLUSTER_FOOTPRINTS.single;
+}
+
+function drawGeneratedRockClusters(ctx, mapWorld, visibleHexes, size, origin) {
+  const consumedKeys = new Set();
+  const sortedHexes = [...visibleHexes].sort((a, b) => a.q - b.q || a.r - b.r);
+
+  for (const hex of sortedHexes) {
+    const key = makeHexKeyFromHex(hex);
+    const naturalBlock = getGeneratedNaturalBlock(mapWorld, hex.q, hex.r);
+
+    if (!naturalBlock || consumedKeys.has(key)) continue;
+
+    const footprint = chooseRockVisualFootprint(mapWorld, hex, naturalBlock.type, consumedKeys);
+    const center = axialToPixel(hex, size, origin);
+
+    consumeRockVisualCluster(hex, footprint, consumedKeys);
+
+    ctx.save();
+    ctx.translate(center.x, center.y);
+    drawRockClusterShape(ctx, footprint, naturalBlock.type, size, 1);
+    ctx.restore();
   }
 }
 
@@ -254,6 +349,7 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
   const surfaceLayer = tile.layers.surface;
 
   if (!surfaceLayer.naturalBlock) return;
+  if (surfaceLayer.naturalBlock.generated) return;
 
   const center = axialToPixel(hex, size, origin);
   const radius = size * 0.34;
@@ -261,21 +357,15 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
 
   ctx.save();
   ctx.translate(center.x, center.y);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
 
-  if (naturalBlock.generated) {
-    drawCaveWall(ctx, naturalBlock, size);
-  } else {
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
-
-    ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
-    ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
-  }
-
+  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
   ctx.restore();
 }
 
@@ -571,6 +661,7 @@ export function createCanvasRenderer(canvas, gameState) {
       drawSurfaceLayer(ctx, hex, tile, hexSize, origin);
     }
 
+    drawGeneratedRockClusters(ctx, mapWorld, visibleHexes, hexSize, origin);
     drawBuildPreview(ctx, gameState, hexSize, origin);
 
     for (const construction of mapWorld.pendingConstructions) {
