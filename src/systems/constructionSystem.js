@@ -1,4 +1,4 @@
-import { getBuildingDefinition, getBuildTime } from "../content/buildingDefinitions.js";
+import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../content/buildingDefinitions.js";
 import { makeHexKey } from "../hex/hexMath.js";
 
 function hasEnoughResources(resources, cost) {
@@ -19,6 +19,13 @@ function subtractResources(resources, cost) {
   }
 }
 
+function getAbsoluteFootprint(anchorQ, anchorR, footprint) {
+  return footprint.map((hex) => ({
+    q: anchorQ + hex.q,
+    r: anchorR + hex.r,
+  }));
+}
+
 function findBuildingAt(world, q, r) {
   const tile = world.getOrCreateTile(q, r);
 
@@ -33,7 +40,13 @@ function isHexOccupied(world, q, r) {
   if (tile.layers.surface.naturalBlock) return true;
   if (tile.layers.surface.buildingId) return true;
 
-  return world.pendingConstructions.some((construction) => construction.q === q && construction.r === r);
+  return world.pendingConstructions.some((construction) => {
+    return construction.occupiedHexes.some((hex) => hex.q === q && hex.r === r);
+  });
+}
+
+function isFootprintOccupied(world, occupiedHexes) {
+  return occupiedHexes.some((hex) => isHexOccupied(world, hex.q, hex.r));
 }
 
 function createConstructionId(definition, q, r) {
@@ -52,6 +65,8 @@ function createBuildingFromConstruction(construction, definition) {
     solid: definition.solid,
     direction: null,
     directionMode: definition.directionMode,
+    footprint: getBuildingFootprint(definition),
+    occupiedHexes: construction.occupiedHexes,
     constructed: true,
     cost: { ...definition.cost },
   };
@@ -63,7 +78,11 @@ export function requestBuildAt(gameState, q, r) {
 
   if (!definition) return false;
   if (definition.type !== "wall") return false;
-  if (isHexOccupied(gameState.mapWorld, q, r)) return false;
+
+  const footprint = getBuildingFootprint(definition);
+  const occupiedHexes = getAbsoluteFootprint(q, r, footprint);
+
+  if (isFootprintOccupied(gameState.mapWorld, occupiedHexes)) return false;
   if (!hasEnoughResources(gameState.mapWorld.resources, definition.cost)) return false;
 
   subtractResources(gameState.mapWorld.resources, definition.cost);
@@ -73,6 +92,8 @@ export function requestBuildAt(gameState, q, r) {
     definitionId: definition.id,
     q,
     r,
+    footprint,
+    occupiedHexes,
     elapsed: 0,
     totalTime: getBuildTime(definition),
   });
@@ -82,7 +103,6 @@ export function requestBuildAt(gameState, q, r) {
 
 export function requestDeconstructAt(gameState, q, r) {
   const world = gameState.mapWorld;
-  const tile = world.getOrCreateTile(q, r);
   const building = findBuildingAt(world, q, r);
 
   if (!building?.constructed) return false;
@@ -91,7 +111,15 @@ export function requestDeconstructAt(gameState, q, r) {
   const refundCost = building.cost ?? definition?.cost ?? {};
 
   world.buildings = world.buildings.filter((candidate) => candidate.id !== building.id);
-  tile.layers.surface.buildingId = null;
+
+  for (const hex of building.occupiedHexes ?? [{ q: building.q, r: building.r }]) {
+    const tile = world.getOrCreateTile(hex.q, hex.r);
+
+    if (tile.layers.surface.buildingId === building.id) {
+      tile.layers.surface.buildingId = null;
+    }
+  }
+
   addResources(world.resources, refundCost);
 
   return true;
@@ -118,12 +146,15 @@ export function constructionSystem(gameState, dt) {
     const definition = getBuildingDefinition(construction.definitionId);
 
     if (!definition) continue;
-    if (isHexOccupied(world, construction.q, construction.r)) continue;
+    if (isFootprintOccupied(world, construction.occupiedHexes)) continue;
 
     const building = createBuildingFromConstruction(construction, definition);
-    const tile = world.getOrCreateTile(building.q, building.r);
 
     world.buildings.push(building);
-    tile.layers.surface.buildingId = building.id;
+
+    for (const hex of building.occupiedHexes) {
+      const tile = world.getOrCreateTile(hex.q, hex.r);
+      tile.layers.surface.buildingId = building.id;
+    }
   }
 }
