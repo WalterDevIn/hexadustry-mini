@@ -5,14 +5,14 @@ import { createInitialWorld, MAP_LAYERS } from "../world/createInitialWorld.js";
 const PLAYER_COLOR = {
   stroke: "rgba(255, 226, 64, 0.98)",
   fill: "rgba(255, 226, 64, 0.16)",
-  label: "rgba(255, 236, 126, 0.96)",
+  labelColor: "rgba(255, 236, 126, 0.96)",
   aura: "rgba(255, 226, 64, 0.28)",
 };
 
 const ENEMY_COLOR = {
   stroke: "rgba(255, 64, 64, 0.98)",
   fill: "rgba(255, 64, 64, 0.14)",
-  label: "rgba(255, 120, 120, 0.96)",
+  labelColor: "rgba(255, 120, 120, 0.96)",
   aura: "rgba(255, 64, 64, 0.2)",
 };
 
@@ -175,6 +175,7 @@ export function createInitialGameState() {
       buildMenu: {
         activeCategory: "turrets",
         selectedBlockId: null,
+        hoveredHex: null,
       },
     },
     time: {
