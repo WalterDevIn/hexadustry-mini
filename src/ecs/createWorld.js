@@ -5,11 +5,14 @@ export function createWorld() {
     components: {
       transform: new Map(),
       velocity: new Map(),
+      hexPosition: new Map(),
       mapLayer: new Map(),
       playerControlled: new Map(),
       enemyAi: new Map(),
+      groundEnemyAi: new Map(),
       team: new Map(),
       triangleRenderable: new Map(),
+      circleRenderable: new Map(),
       health: new Map(),
     },
   };
