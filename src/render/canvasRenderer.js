@@ -17,17 +17,8 @@ const PLAYER_YELLOW = {
   detail: "rgba(255, 236, 126, 0.88)",
 };
 
-const BUILD_ANIMATION_YELLOW = {
-  fill: [255, 226, 64],
-  stroke: [255, 226, 64],
-  detail: [255, 236, 126],
-};
-
-const BUILD_ANIMATION_RED = {
-  fill: [255, 64, 64],
-  stroke: [255, 64, 64],
-  detail: [255, 126, 126],
-};
+const BUILD_ANIMATION_YELLOW = [255, 226, 64];
+const BUILD_ANIMATION_RED = [255, 64, 64];
 
 const ROCK_CLUSTER_FOOTPRINTS = {
   single: [{ q: 0, r: 0 }],
@@ -251,28 +242,17 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
 function drawAnimatedWallShape(ctx, source, size, color, alpha, scale) {
   const footprint = getWallFootprint(source);
   const wallCenter = getWallCenter(footprint, size);
-  const outerSegments = getWallBoundarySegments(footprint, size);
-  const innerSegments = insetSegmentsToward(outerSegments, wallCenter, getInnerWallInset(size));
 
   ctx.save();
   ctx.translate(wallCenter.x, wallCenter.y);
   ctx.scale(scale, scale);
   ctx.translate(-wallCenter.x, -wallCenter.y);
-
-  ctx.fillStyle = rgba(color.fill, 0.16 * alpha);
+  ctx.fillStyle = rgba(color, alpha);
 
   for (const hex of footprint) {
     drawPath(ctx, getWallCorners(hex, size));
     ctx.fill();
   }
-
-  ctx.strokeStyle = rgba(color.stroke, 0.82 * alpha);
-  ctx.lineWidth = 2.1;
-  strokeSegments(ctx, outerSegments);
-
-  ctx.strokeStyle = rgba(color.detail, 0.64 * alpha);
-  ctx.lineWidth = 1.55;
-  strokeCornerSegments(ctx, innerSegments, 0.28);
 
   ctx.restore();
 }
