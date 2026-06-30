@@ -86,7 +86,7 @@ button {
   right: 16px;
   bottom: 16px;
   z-index: 3;
-  width: min(360px, calc(100vw - 32px));
+  width: min(348px, calc(100vw - 32px));
   border: 1px solid var(--line-mid);
   background: rgba(0, 0, 0, 0.78);
   color: var(--text);
@@ -115,20 +115,22 @@ button {
 
 .build-menu__tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 34px);
+  justify-content: center;
   gap: 6px;
   padding: 8px;
 }
 
 .build-menu__tab {
-  min-height: 30px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--line-dim);
   background: rgba(0, 0, 0, 0.52);
   color: rgba(255, 255, 255, 0.72);
   cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.07em;
-  text-align: left;
+  font-size: 17px;
+  line-height: 1;
+  text-align: center;
 }
 
 .build-menu__tab:hover,
@@ -144,6 +146,12 @@ button {
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 1);
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.build-menu__block.is-active {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62),
+    0 0 12px rgba(255, 255, 255, 0.12);
 }
 
 .build-menu__body {
@@ -167,21 +175,27 @@ button {
 
 .build-menu__blocks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  min-height: 44px;
+  grid-template-columns: repeat(3, 86px);
+  justify-content: center;
+  gap: 8px;
+  min-height: 78px;
   padding: 8px;
   border-top: 1px solid var(--line-dim);
 }
 
 .build-menu__block {
-  min-height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 86px;
+  height: 70px;
   border: 1px solid var(--line-dim);
   background: rgba(0, 0, 0, 0.5);
   color: rgba(255, 255, 255, 0.74);
   cursor: pointer;
-  font-size: 10px;
-  letter-spacing: 0.07em;
+  font-size: 9px;
+  letter-spacing: 0.06em;
 }
 
 .build-menu__block:hover,
@@ -189,6 +203,29 @@ button {
   border-color: rgba(255, 255, 255, 0.78);
   color: rgba(255, 255, 255, 0.96);
   outline: none;
+}
+
+.build-menu__block-preview {
+  width: 64px;
+  height: 48px;
+  overflow: visible;
+}
+
+.build-menu__block-hex {
+  fill: rgba(255, 226, 64, 0.12);
+  stroke: rgba(255, 226, 64, 0.92);
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.build-menu__block-label {
+  max-width: 76px;
+  min-height: 10px;
+  overflow: hidden;
+  opacity: 0.72;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .build-menu__empty {
