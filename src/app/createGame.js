@@ -4,8 +4,9 @@ import { bindKeyboardInput } from "../input/keyboardInput.js";
 import { createCanvasRenderer } from "../render/canvasRenderer.js";
 import { constructionSystem } from "../systems/constructionSystem.js";
 import { respawnPlayerAtCore } from "../systems/coreRespawnSystem.js";
-import { drillSystem } from "../systems/drillSystem.js";
+import { conveyorSystem } from "../systems/conveyorSystem.js";
 import { enemyAiSystem } from "../systems/enemyAiSystem.js";
+import { extractorSystem } from "../systems/extractorSystem.js";
 import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
 import { playerControlSystem } from "../systems/playerControlSystem.js";
@@ -34,7 +35,8 @@ export function createGame(canvas) {
     movementSystem(gameState, dt);
     projectileSystem(gameState, dt);
     constructionSystem(gameState, dt);
-    drillSystem(gameState, dt);
+    extractorSystem(gameState, dt);
+    conveyorSystem(gameState, dt);
   }
 
   function frame(timestamp) {
