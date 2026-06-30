@@ -1,9 +1,7 @@
 import { queryEntities } from "../ecs/createWorld.js";
-import { axialToPixel, buildHexPolygon, generateVisibleHexes } from "../hex/hexMath.js";
+import { axialToPixel, buildHexPolygon, generateVisibleHexes, hexCorner } from "../hex/hexMath.js";
 import { ensureChunksForHexes } from "../world/chunkedCaveGeneration.js";
 import { getTile, MAP_LAYERS } from "../world/createInitialWorld.js";
-
-const HEX_VISUAL_SCALE = 0.8;
 
 const ENTITY_GLYPHS = {
   core: "CORE",
@@ -48,30 +46,62 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
-  const radius = size * 0.42;
-  const inset = naturalBlock.type === "dense-rock" ? 0 : size * 0.08;
+  const outerCorners = [];
+  const innerCorners = [];
+  const crackScale = naturalBlock.type === "dense-rock" ? 1 : 0.82;
+
+  for (let i = 0; i < 6; i += 1) {
+    outerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.96, i));
+    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.58, i));
+  }
+
+  ctx.fillStyle = naturalBlock.type === "dense-rock"
+    ? "rgba(255, 255, 255, 0.08)"
+    : "rgba(255, 255, 255, 0.045)";
+  ctx.strokeStyle = naturalBlock.type === "dense-rock"
+    ? "rgba(255, 255, 255, 0.9)"
+    : "rgba(255, 255, 255, 0.72)";
+  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 2.2 : 1.6;
+
+  drawPath(ctx, outerCorners);
+  ctx.fill();
+  ctx.stroke();
 
   ctx.strokeStyle = naturalBlock.type === "dense-rock"
-    ? "rgba(255, 255, 255, 0.82)"
-    : "rgba(255, 255, 255, 0.62)";
-  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 2 : 1.5;
+    ? "rgba(255, 255, 255, 0.58)"
+    : "rgba(255, 255, 255, 0.42)";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < 6; i += 1) {
+    const a = outerCorners[i];
+    const b = innerCorners[(i + 2) % 6];
+
+    ctx.beginPath();
+    ctx.moveTo(a.x * 0.82, a.y * 0.82);
+    ctx.lineTo(b.x * crackScale, b.y * crackScale);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = naturalBlock.type === "dense-rock"
+    ? "rgba(255, 255, 255, 0.7)"
+    : "rgba(255, 255, 255, 0.5)";
+  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 1.5 : 1.2;
 
   ctx.beginPath();
-  ctx.moveTo(-radius + inset, -radius * 0.35);
-  ctx.lineTo(-radius * 0.35, -radius + inset);
-  ctx.lineTo(radius * 0.45, -radius * 0.78);
-  ctx.lineTo(radius - inset, -radius * 0.12);
-  ctx.lineTo(radius * 0.58, radius * 0.72);
-  ctx.lineTo(-radius * 0.5, radius - inset);
-  ctx.lineTo(-radius + inset, radius * 0.28);
-  ctx.closePath();
+  ctx.moveTo(-size * 0.48, -size * 0.12);
+  ctx.lineTo(-size * 0.18, -size * 0.36);
+  ctx.lineTo(size * 0.24, -size * 0.22);
+  ctx.lineTo(size * 0.46, size * 0.06);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(-radius * 0.38, -radius * 0.18);
-  ctx.lineTo(radius * 0.24, -radius * 0.42);
-  ctx.moveTo(-radius * 0.1, radius * 0.34);
-  ctx.lineTo(radius * 0.46, radius * 0.08);
+  ctx.moveTo(-size * 0.36, size * 0.32);
+  ctx.lineTo(-size * 0.02, size * 0.14);
+  ctx.lineTo(size * 0.34, size * 0.36);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(-size * 0.16, size * 0.02, size * 0.12, 0, Math.PI * 2);
   ctx.stroke();
 }
 
@@ -99,7 +129,7 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = naturalBlock.generated
-    ? "rgba(255, 255, 255, 0.5)"
+    ? "rgba(255, 255, 255, 0.55)"
     : "rgba(255, 255, 255, 0.72)";
   ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
   ctx.restore();
@@ -210,6 +240,41 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.restore();
 }
 
+function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
+  const transform = ecsWorld.components.transform.get(entityId);
+  const renderable = ecsWorld.components.circleRenderable.get(entityId);
+  const radius = renderable.radius;
+  const x = screenOrigin.x + transform.x;
+  const y = screenOrigin.y + transform.y;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(transform.rotation);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.88)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
+  ctx.lineWidth = renderable.lineWidth;
+
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(radius * 0.9, 0);
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "10px Courier New";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.fillText(renderable.label, x, y + radius + 12);
+  ctx.restore();
+}
+
 function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin) {
   const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable", "mapLayer"]);
 
@@ -218,6 +283,16 @@ function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin) {
 
     if (mapLayer.id === layerId) {
       drawTriangleEntity(ctx, entityId, ecsWorld, origin);
+    }
+  }
+
+  const circleEntities = queryEntities(ecsWorld, ["transform", "circleRenderable", "mapLayer"]);
+
+  for (const entityId of circleEntities) {
+    const mapLayer = ecsWorld.components.mapLayer.get(entityId);
+
+    if (mapLayer.id === layerId) {
+      drawCircleEntity(ctx, entityId, ecsWorld, origin);
     }
   }
 }
@@ -262,8 +337,7 @@ export function createCanvasRenderer(canvas, gameState) {
     const { mapWorld, ecsWorld } = gameState;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    const baseHexSize = Math.max(22, Math.min(width, height) / 22);
-    const hexSize = baseHexSize * HEX_VISUAL_SCALE * camera.zoom;
+    const hexSize = mapWorld.hexSize * camera.zoom;
     const cameraTarget = getCameraTarget(gameState);
     const origin = {
       x: width / 2 - cameraTarget.x,
