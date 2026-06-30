@@ -5,6 +5,7 @@ export function createWorld() {
     components: {
       transform: new Map(),
       velocity: new Map(),
+      mapLayer: new Map(),
       playerControlled: new Map(),
       enemyAi: new Map(),
       team: new Map(),
