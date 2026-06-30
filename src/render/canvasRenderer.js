@@ -46,63 +46,48 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
-  const outerCorners = [];
-  const innerCorners = [];
-  const crackScale = naturalBlock.type === "dense-rock" ? 1 : 0.82;
+  const corners = [];
+  const isDenseRock = naturalBlock.type === "dense-rock";
 
   for (let i = 0; i < 6; i += 1) {
-    outerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.96, i));
-    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.58, i));
+    corners.push(hexCorner({ x: 0, y: 0 }, size * 0.96, i));
   }
 
-  ctx.fillStyle = naturalBlock.type === "dense-rock"
-    ? "rgba(255, 255, 255, 0.08)"
+  ctx.fillStyle = isDenseRock
+    ? "rgba(255, 255, 255, 0.09)"
     : "rgba(255, 255, 255, 0.045)";
-  ctx.strokeStyle = naturalBlock.type === "dense-rock"
-    ? "rgba(255, 255, 255, 0.9)"
-    : "rgba(255, 255, 255, 0.72)";
-  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 2.2 : 1.6;
+  ctx.strokeStyle = isDenseRock
+    ? "rgba(255, 255, 255, 0.88)"
+    : "rgba(255, 255, 255, 0.68)";
+  ctx.lineWidth = isDenseRock ? 2.2 : 1.6;
 
-  drawPath(ctx, outerCorners);
+  drawPath(ctx, corners);
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = naturalBlock.type === "dense-rock"
-    ? "rgba(255, 255, 255, 0.58)"
-    : "rgba(255, 255, 255, 0.42)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = isDenseRock
+    ? "rgba(255, 255, 255, 0.72)"
+    : "rgba(255, 255, 255, 0.5)";
+  ctx.lineWidth = isDenseRock ? 1.8 : 1.3;
 
-  for (let i = 0; i < 6; i += 1) {
-    const a = outerCorners[i];
-    const b = innerCorners[(i + 2) % 6];
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.5, -size * 0.16);
+  ctx.lineTo(-size * 0.16, -size * 0.38);
+  ctx.lineTo(size * 0.34, -size * 0.14);
+  ctx.stroke();
 
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.32, size * 0.34);
+  ctx.lineTo(size * 0.04, size * 0.12);
+  ctx.lineTo(size * 0.5, size * 0.28);
+  ctx.stroke();
+
+  if (isDenseRock) {
     ctx.beginPath();
-    ctx.moveTo(a.x * 0.82, a.y * 0.82);
-    ctx.lineTo(b.x * crackScale, b.y * crackScale);
+    ctx.moveTo(-size * 0.08, -size * 0.02);
+    ctx.lineTo(size * 0.18, size * 0.18);
     ctx.stroke();
   }
-
-  ctx.strokeStyle = naturalBlock.type === "dense-rock"
-    ? "rgba(255, 255, 255, 0.7)"
-    : "rgba(255, 255, 255, 0.5)";
-  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 1.5 : 1.2;
-
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.48, -size * 0.12);
-  ctx.lineTo(-size * 0.18, -size * 0.36);
-  ctx.lineTo(size * 0.24, -size * 0.22);
-  ctx.lineTo(size * 0.46, size * 0.06);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.36, size * 0.32);
-  ctx.lineTo(-size * 0.02, size * 0.14);
-  ctx.lineTo(size * 0.34, size * 0.36);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(-size * 0.16, size * 0.02, size * 0.12, 0, Math.PI * 2);
-  ctx.stroke();
 }
 
 function drawSurfaceLayer(ctx, hex, tile, size, origin) {
@@ -123,15 +108,14 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
     ctx.lineWidth = 1.5;
     ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
+
+    ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+    ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
   }
 
-  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = naturalBlock.generated
-    ? "rgba(255, 255, 255, 0.55)"
-    : "rgba(255, 255, 255, 0.72)";
-  ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
   ctx.restore();
 }
 
