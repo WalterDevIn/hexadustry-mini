@@ -1,5 +1,5 @@
 import { createEntity, createWorld, addComponent } from "../ecs/createWorld.js";
-import { createInitialWorld } from "../world/createInitialWorld.js";
+import { createInitialWorld, MAP_LAYERS } from "../world/createInitialWorld.js";
 
 function createPlayerShip(ecsWorld) {
   const entityId = createEntity(ecsWorld);
@@ -14,6 +14,10 @@ function createPlayerShip(ecsWorld) {
     x: 0,
     y: 0,
     maxSpeed: 180,
+  });
+
+  addComponent(ecsWorld, "mapLayer", entityId, {
+    id: MAP_LAYERS.air,
   });
 
   addComponent(ecsWorld, "playerControlled", entityId, {
@@ -52,6 +56,10 @@ function createEnemyShip(ecsWorld) {
     x: 0,
     y: 0,
     maxSpeed: 92,
+  });
+
+  addComponent(ecsWorld, "mapLayer", entityId, {
+    id: MAP_LAYERS.air,
   });
 
   addComponent(ecsWorld, "enemyAi", entityId, {
