@@ -154,12 +154,46 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
   strokeCornerSegments(ctx, innerSegments, 0.28);
 }
 
-function drawCoreShape(ctx, building, size, alpha = 1) {
+function drawCoreHexShell(ctx, building, size, alpha = 1) {
+  const footprint = getWallFootprint(building);
+  const wallCenter = getWallCenter(footprint, size);
+  const outerSegments = getWallBoundarySegments(footprint, size);
+  const innerSegments = insetSegmentsToward(outerSegments, wallCenter, getInnerWallInset(size));
+  fillWallFootprint(ctx, footprint, size, alpha);
+  ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
+  ctx.lineWidth = 2.25;
+  strokeSegments(ctx, outerSegments);
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.96 * alpha})`;
+  ctx.lineWidth = 1.75;
+  strokeSegments(ctx, innerSegments);
+}
+
+function getSpawnProgress(gameState) {
+  const spawn = gameState.playerSpawn;
+  if (!spawn?.active) return 1;
+  return Math.min(1, spawn.elapsed / spawn.duration);
+}
+
+function drawAssemblyLine(ctx, half, gameState) {
+  const spawn = gameState.playerSpawn;
+  if (!spawn?.active) return;
+  const progress = getSpawnProgress(gameState);
+  const phase = Math.sin(progress * Math.PI * 4);
+  const y = phase * half * 0.62;
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.4 + progress * 0.58})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-half * 0.72, y);
+  ctx.lineTo(half * 0.72, y);
+  ctx.stroke();
+}
+
+function drawCoreShape(ctx, building, size, gameState, alpha = 1) {
   const footprint = getWallFootprint(building);
   const center = getWallCenter(footprint, size);
-  const squareSize = size * 1.2;
+  const squareSize = size * 1.5;
   const half = squareSize / 2;
-  drawHexWallShape(ctx, building, size, alpha);
+  drawCoreHexShell(ctx, building, size, alpha);
   ctx.save();
   ctx.translate(center.x, center.y);
   ctx.fillStyle = `rgba(255, 226, 64, ${0.09 * alpha})`;
@@ -167,16 +201,10 @@ function drawCoreShape(ctx, building, size, alpha = 1) {
   ctx.lineWidth = 2.4;
   ctx.fillRect(-half, -half, squareSize, squareSize);
   ctx.strokeRect(-half, -half, squareSize, squareSize);
-  ctx.strokeStyle = `rgba(255, 236, 126, ${0.72 * alpha})`;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.moveTo(-half * 0.58, 0);
-  ctx.lineTo(half * 0.58, 0);
-  ctx.moveTo(0, -half * 0.58);
-  ctx.lineTo(0, half * 0.58);
-  ctx.stroke();
   ctx.strokeStyle = `rgba(255, 226, 64, ${0.5 * alpha})`;
+  ctx.lineWidth = 1.4;
   ctx.strokeRect(-half * 0.62, -half * 0.62, squareSize * 0.62, squareSize * 0.62);
+  drawAssemblyLine(ctx, half, gameState);
   ctx.restore();
 }
 
@@ -352,7 +380,7 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
   ctx.restore();
 }
 
-function drawBuilding(ctx, building, size, origin) {
+function drawBuilding(ctx, building, size, origin, gameState) {
   const center = axialToPixel(building, size, origin);
   const radius = size * 0.48;
   ctx.save();
@@ -362,16 +390,10 @@ function drawBuilding(ctx, building, size, origin) {
   ctx.fillStyle = "rgba(0, 0, 0, 0.84)";
   ctx.lineWidth = 2;
   if (building.type === "core") {
-    drawCoreShape(ctx, building, size, 1);
+    drawCoreShape(ctx, building, size, gameState, 1);
   } else if (building.type === "drill") {
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-radius * 0.55, -radius * 0.55);
-    ctx.lineTo(radius * 0.55, radius * 0.55);
-    ctx.moveTo(radius * 0.55, -radius * 0.55);
-    ctx.lineTo(-radius * 0.55, radius * 0.55);
     ctx.stroke();
   } else if (building.type === "conveyor") {
     ctx.beginPath();
@@ -458,13 +480,20 @@ function drawEquilateralTriangle(ctx, radius) {
   ctx.closePath();
 }
 
-function drawUnitTurret(ctx, transform, turret, screenOrigin) {
+function getPlayerEntityAlpha(gameState, team) {
+  if (team?.id !== "player") return 1;
+  const progress = getSpawnProgress(gameState);
+  return 0.18 + progress * 0.82;
+}
+
+function drawUnitTurret(ctx, transform, turret, screenOrigin, alpha = 1) {
   const worldRotation = transform.rotation + turret.relativeRotation;
   const x = screenOrigin.x + transform.x;
   const y = screenOrigin.y + transform.y;
   const rearLength = turret.length * turret.rearRatio;
   const frontLength = turret.length * (1 - turret.rearRatio);
   ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   ctx.rotate(worldRotation);
   ctx.strokeStyle = "rgba(255, 236, 126, 0.96)";
@@ -480,7 +509,7 @@ function drawUnitTurret(ctx, transform, turret, screenOrigin) {
   ctx.restore();
 }
 
-function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
+function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin, gameState) {
   const transform = ecsWorld.components.transform.get(entityId);
   const renderable = ecsWorld.components.triangleRenderable.get(entityId);
   const team = ecsWorld.components.team.get(entityId);
@@ -489,8 +518,10 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   const radius = renderable.radius;
   const x = screenOrigin.x + transform.x;
   const y = screenOrigin.y + transform.y;
-  if (team?.id === "player" && playerControlled?.exhaustParticles?.length) drawPlayerExhaust(ctx, playerControlled.exhaustParticles, screenOrigin);
+  const entityAlpha = getPlayerEntityAlpha(gameState, team);
+  if (team?.id === "player" && playerControlled?.exhaustParticles?.length && entityAlpha >= 0.99) drawPlayerExhaust(ctx, playerControlled.exhaustParticles, screenOrigin);
   ctx.save();
+  ctx.globalAlpha = entityAlpha;
   ctx.translate(x, y);
   ctx.rotate(transform.rotation);
   ctx.strokeStyle = renderable.stroke ?? DEFAULT_RENDER_COLORS.stroke;
@@ -515,9 +546,10 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
     ctx.stroke();
   }
   ctx.restore();
-  if (turret) drawUnitTurret(ctx, transform, turret, screenOrigin);
+  if (turret) drawUnitTurret(ctx, transform, turret, screenOrigin, entityAlpha);
   if (renderable.showLabel !== false) {
     ctx.save();
+    ctx.globalAlpha = entityAlpha;
     ctx.font = "11px Courier New";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -527,6 +559,7 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   }
   if (team?.id === "player") {
     ctx.save();
+    ctx.globalAlpha = entityAlpha;
     ctx.beginPath();
     ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
     ctx.strokeStyle = renderable.aura ?? DEFAULT_RENDER_COLORS.aura;
@@ -583,14 +616,14 @@ function drawLineEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.restore();
 }
 
-function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin) {
+function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin, gameState) {
   const lineEntities = queryEntities(ecsWorld, ["transform", "lineRenderable", "mapLayer"]);
   for (const entityId of lineEntities) {
     if (ecsWorld.components.mapLayer.get(entityId).id === layerId) drawLineEntity(ctx, entityId, ecsWorld, origin);
   }
   const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable", "mapLayer"]);
   for (const entityId of triangleEntities) {
-    if (ecsWorld.components.mapLayer.get(entityId).id === layerId) drawTriangleEntity(ctx, entityId, ecsWorld, origin);
+    if (ecsWorld.components.mapLayer.get(entityId).id === layerId) drawTriangleEntity(ctx, entityId, ecsWorld, origin, gameState);
   }
   const circleEntities = queryEntities(ecsWorld, ["transform", "circleRenderable", "mapLayer"]);
   for (const entityId of circleEntities) {
@@ -648,10 +681,10 @@ export function createCanvasRenderer(canvas, gameState) {
     drawBuildPreview(ctx, gameState, hexSize, origin);
 
     for (const construction of mapWorld.pendingConstructions) drawPendingConstruction(ctx, construction, hexSize, origin);
-    for (const building of mapWorld.buildings) drawBuilding(ctx, building, hexSize, origin);
+    for (const building of mapWorld.buildings) drawBuilding(ctx, building, hexSize, origin, gameState);
     for (const deconstruction of mapWorld.pendingDeconstructions) drawPendingDeconstruction(ctx, deconstruction, hexSize, origin);
-    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.surface, origin);
-    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.air, origin);
+    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.surface, origin, gameState);
+    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.air, origin, gameState);
     drawScanlines(ctx, width, height);
   }
 
