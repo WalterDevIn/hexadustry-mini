@@ -14,22 +14,17 @@ function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % DIRECTION_COUNT];
   const end = axialToPixel(direction, size);
 
-  return {
-    angle: Math.atan2(end.y, end.x),
-  };
+  return { angle: Math.atan2(end.y, end.x) };
 }
 
 function getBuildingAt(mapWorld, q, r) {
   const buildingId = mapWorld?.getOrCreateTile(q, r).layers.surface.buildingId;
-
   if (!buildingId) return null;
-
   return mapWorld.buildings.find((building) => building.id === buildingId) ?? null;
 }
 
 function conveyorOutputsTo(neighbor, target) {
   const direction = HEX_DIRECTIONS[(neighbor.direction ?? 0) % DIRECTION_COUNT];
-
   return neighbor.q + direction.q === target.q && neighbor.r + direction.r === target.r;
 }
 
@@ -38,7 +33,6 @@ function canFeedThisConveyor(neighbor, target) {
   if (neighbor.type === "conveyor") return conveyorOutputsTo(neighbor, target);
   if (neighbor.type === "drill") return true;
   if (neighbor.type === "core") return false;
-
   return Boolean(neighbor.storage || neighbor.drill);
 }
 
@@ -52,30 +46,23 @@ function toWorldSide(localSide, outputSide) {
 
 function getConnectedInputSides(mapWorld, building) {
   const outputSide = building.direction ?? 0;
-
   if (!mapWorld) return [3];
-
   const localSides = [];
 
   for (let worldSide = 0; worldSide < DIRECTION_COUNT; worldSide += 1) {
     if (worldSide === outputSide) continue;
-
     const direction = HEX_DIRECTIONS[worldSide];
     const neighbor = getBuildingAt(mapWorld, building.q + direction.q, building.r + direction.r);
-
     if (canFeedThisConveyor(neighbor, building)) localSides.push(toLocalSide(worldSide, outputSide));
   }
 
   const entryDirection = building.conveyor?.item?.entryDirection;
-
   if (typeof entryDirection === "number" && entryDirection !== outputSide) {
     const itemLocalSide = toLocalSide(entryDirection, outputSide);
-
     if (!localSides.includes(itemLocalSide)) localSides.push(itemLocalSide);
   }
 
   if (localSides.length === 0) return [3];
-
   return [...new Set(localSides)].sort((a, b) => a - b);
 }
 
@@ -84,19 +71,12 @@ function getOuterCorners(size) {
 }
 
 function getInnerCorners(size) {
-  return getOuterCorners(size).map((corner) => ({
-    x: corner.x * INNER_SCALE,
-    y: corner.y * INNER_SCALE,
-  }));
+  return getOuterCorners(size).map((corner) => ({ x: corner.x * INNER_SCALE, y: corner.y * INNER_SCALE }));
 }
 
 function getSideEdge(corners, sideIndex) {
   const edgeIndex = EDGE_BY_DIRECTION[sideIndex % EDGE_BY_DIRECTION.length];
-
-  return {
-    a: corners[edgeIndex],
-    b: corners[(edgeIndex + 1) % corners.length],
-  };
+  return { a: corners[edgeIndex], b: corners[(edgeIndex + 1) % corners.length] };
 }
 
 function getPointKey(point) {
@@ -120,9 +100,7 @@ function drawEdges(ctx, corners, alpha, removedEdges = []) {
 
   for (let i = 0; i < corners.length; i += 1) {
     const edge = { a: corners[i], b: corners[(i + 1) % corners.length] };
-
     if (removedEdges.some((removedEdge) => sameEdge(edge, removedEdge))) continue;
-
     ctx.beginPath();
     ctx.moveTo(edge.a.x, edge.a.y);
     ctx.lineTo(edge.b.x, edge.b.y);
@@ -133,17 +111,11 @@ function drawEdges(ctx, corners, alpha, removedEdges = []) {
 }
 
 function midpoint(edge) {
-  return {
-    x: (edge.a.x + edge.b.x) / 2,
-    y: (edge.a.y + edge.b.y) / 2,
-  };
+  return { x: (edge.a.x + edge.b.x) / 2, y: (edge.a.y + edge.b.y) / 2 };
 }
 
 function getSegmentPoint(start, end, t) {
-  return {
-    x: start.x + (end.x - start.x) * t,
-    y: start.y + (end.y - start.y) * t,
-  };
+  return { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
 }
 
 function getPointDistance(a, b) {
@@ -152,9 +124,7 @@ function getPointDistance(a, b) {
 
 function getRouteLength(route) {
   let length = 0;
-
   for (let i = 0; i < route.length - 1; i += 1) length += getPointDistance(route[i], route[i + 1]);
-
   return length;
 }
 
@@ -166,11 +136,7 @@ function getRoutePoint(route, t) {
     const start = route[i];
     const end = route[i + 1];
     const segmentLength = getPointDistance(start, end);
-
-    if (travelled + segmentLength >= targetDistance) {
-      return getSegmentPoint(start, end, (targetDistance - travelled) / segmentLength);
-    }
-
+    if (travelled + segmentLength >= targetDistance) return getSegmentPoint(start, end, (targetDistance - travelled) / segmentLength);
     travelled += segmentLength;
   }
 
@@ -185,15 +151,12 @@ function getRouteAngle(route, t) {
     const start = route[i];
     const end = route[i + 1];
     const segmentLength = getPointDistance(start, end);
-
     if (travelled + segmentLength >= targetDistance) return Math.atan2(end.y - start.y, end.x - start.x);
-
     travelled += segmentLength;
   }
 
   const start = route[route.length - 2];
   const end = route[route.length - 1];
-
   return Math.atan2(end.y - start.y, end.x - start.x);
 }
 
@@ -201,22 +164,9 @@ function extendRouteForArrow(route, size) {
   const arrowHeight = size * 0.3;
   const firstAngle = Math.atan2(route[1].y - route[0].y, route[1].x - route[0].x);
   const lastAngle = Math.atan2(route[route.length - 1].y - route[route.length - 2].y, route[route.length - 1].x - route[route.length - 2].x);
-
-  return [
-    route[0],
-    ...route.slice(1, -1),
-    {
-      x: route[route.length - 1].x + Math.cos(lastAngle) * arrowHeight,
-      y: route[route.length - 1].y + Math.sin(lastAngle) * arrowHeight,
-    },
-  ].map((point, index) => {
-    if (index !== 0) return point;
-
-    return {
-      x: point.x - Math.cos(firstAngle) * arrowHeight,
-      y: point.y - Math.sin(firstAngle) * arrowHeight,
-    };
-  });
+  const start = { x: route[0].x - Math.cos(firstAngle) * arrowHeight, y: route[0].y - Math.sin(firstAngle) * arrowHeight };
+  const end = { x: route.at(-1).x + Math.cos(lastAngle) * arrowHeight, y: route.at(-1).y + Math.sin(lastAngle) * arrowHeight };
+  return [start, ...route.slice(1, -1), end];
 }
 
 function getDuctRoute(inputEdge, outputEdge) {
@@ -229,22 +179,13 @@ function getEndpointPair(inputEdge, outputEdge) {
   const crossedDistance = Math.hypot(inputEdge.a.x - outputEdge.b.x, inputEdge.a.y - outputEdge.b.y)
     + Math.hypot(inputEdge.b.x - outputEdge.a.x, inputEdge.b.y - outputEdge.a.y);
 
-  if (crossedDistance < directDistance) {
-    return [
-      { start: inputEdge.a, end: outputEdge.b },
-      { start: inputEdge.b, end: outputEdge.a },
-    ];
-  }
-
-  return [
-    { start: inputEdge.a, end: outputEdge.a },
-    { start: inputEdge.b, end: outputEdge.b },
-  ];
+  if (crossedDistance < directDistance) return [{ start: inputEdge.a, end: outputEdge.b }, { start: inputEdge.b, end: outputEdge.a }];
+  return [{ start: inputEdge.a, end: outputEdge.a }, { start: inputEdge.b, end: outputEdge.b }];
 }
 
-function drawDuctWalls(ctx, inputEdge, outputEdge, alpha) {
+function drawDuctWalls(ctx, inputEdge, outputEdge, size, alpha) {
   const pairs = getEndpointPair(inputEdge, outputEdge);
-  const centerOffsets = [-0.06, 0.06];
+  const centerOffsets = [-0.055, 0.055];
 
   ctx.save();
   ctx.strokeStyle = yellow(0.72 * alpha);
@@ -253,13 +194,9 @@ function drawDuctWalls(ctx, inputEdge, outputEdge, alpha) {
   ctx.lineJoin = "round";
 
   pairs.forEach((pair, index) => {
-    const route = getDuctRoute({ a: pair.start, b: pair.start }, { a: pair.end, b: pair.end });
     const angle = getRouteAngle([pair.start, { x: 0, y: 0 }, pair.end], 0.5);
     const normal = { x: -Math.sin(angle), y: Math.cos(angle) };
-    const center = {
-      x: normal.x * centerOffsets[index] * 22,
-      y: normal.y * centerOffsets[index] * 22,
-    };
+    const center = { x: normal.x * centerOffsets[index] * size, y: normal.y * centerOffsets[index] * size };
 
     ctx.beginPath();
     ctx.moveTo(pair.start.x, pair.start.y);
@@ -278,7 +215,6 @@ function groupContiguousSides(localInputSides) {
   for (const side of uniqueSides) {
     const lastGroup = groups[groups.length - 1];
     const previousSide = lastGroup?.[lastGroup.length - 1];
-
     if (lastGroup && side === previousSide + 1) lastGroup.push(side);
     else groups.push([side]);
   }
@@ -292,21 +228,15 @@ function getOpenEdgeForSideGroup(corners, sideGroup) {
 
   for (const side of sideGroup) {
     const edge = getSideEdge(corners, side);
-
     for (const point of [edge.a, edge.b]) {
       const key = getPointKey(point);
-
       pointByKey.set(key, point);
       pointCounts.set(key, (pointCounts.get(key) ?? 0) + 1);
     }
   }
 
-  const endpoints = [...pointCounts.entries()]
-    .filter(([, count]) => count === 1)
-    .map(([key]) => pointByKey.get(key));
-
+  const endpoints = [...pointCounts.entries()].filter(([, count]) => count === 1).map(([key]) => pointByKey.get(key));
   if (endpoints.length >= 2) return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
-
   return getSideEdge(corners, sideGroup[0]);
 }
 
@@ -345,13 +275,10 @@ function drawEquilateralArrow(ctx, route, phase, size, alpha, clipCorners) {
 function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha) {
   const item = building.conveyor?.item;
   if (!item) return;
-
   const transferSeconds = building.conveyor.transferSeconds || 0.33;
   const progress = Math.min(1, building.conveyor.progress / transferSeconds);
   const inputEdge = inputEdgesByWorldSide.get(item.entryDirection) ?? inputEdgesByWorldSide.values().next().value;
-
   if (!inputEdge) return;
-
   const position = getRoutePoint(getDuctRoute(inputEdge, outputEdge), progress);
 
   ctx.save();
@@ -376,9 +303,7 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   const outputInnerEdge = getSideEdge(innerCorners, 0);
   const inputOuterEdges = localInputSides.map((localSide) => getSideEdge(outerCorners, localSide));
   const inputInnerEdges = localInputSides.map((localSide) => getSideEdge(innerCorners, localSide));
-  const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => {
-    return [toWorldSide(localSide, outputSide), inputInnerEdges[index]];
-  }));
+  const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => [toWorldSide(localSide, outputSide), inputInnerEdges[index]]));
   const arrowPhase = building.conveyor?.beltPhase ?? 0.22;
 
   ctx.save();
@@ -386,12 +311,12 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   drawEdges(ctx, outerCorners, alpha, [outputOuterEdge, ...inputOuterEdges]);
   drawEdges(ctx, innerCorners, alpha, [outputInnerEdge, ...inputInnerEdges]);
 
-  sideGroups.forEach((sideGroup, groupIndex) => {
-    const openEdge = getOpenEdgeForSideGroup(innerCorners, sideGroup);
-    const route = getDuctRoute(openEdge, outputInnerEdge);
+  for (const sideGroup of sideGroups) drawDuctWalls(ctx, getOpenEdgeForSideGroup(innerCorners, sideGroup), outputInnerEdge, size, alpha);
 
-    drawDuctWalls(ctx, openEdge, outputInnerEdge, alpha);
-    drawEquilateralArrow(ctx, route, (arrowPhase + groupIndex * 0.33) % 1, size, alpha, outerCorners);
+  localInputSides.forEach((localSide, index) => {
+    const inputEdge = getSideEdge(innerCorners, localSide);
+    const route = getDuctRoute(inputEdge, outputInnerEdge);
+    drawEquilateralArrow(ctx, route, (arrowPhase + index * 0.23) % 1, size, alpha, outerCorners);
   });
 
   drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputInnerEdge, alpha);
