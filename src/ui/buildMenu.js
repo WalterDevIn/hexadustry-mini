@@ -1,6 +1,6 @@
 import { getBuildingFootprint, getBuildingsByCategory } from "../content/buildingDefinitions.js";
 
-const MATERIAL_ORDER = ["copper", "lead", "graphite"];
+const MATERIAL_ORDER = ["copper", "lead", "carbon"];
 
 export const BUILD_CATEGORIES = [
   { id: "turrets", label: "TORRETAS", icon: "⌖" },
