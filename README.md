@@ -43,9 +43,11 @@ La version actual contiene:
 - Particulas de escape detras del jugador al moverse, con mayor emision a mayor velocidad.
 - Torreta de unidad montada en el jugador, con rotacion propia y disparo automatico si se mantiene click izquierdo.
 - Proyectiles aereos como rayitas rapidas; impactan contra enemigos y atraviesan muros por pertenecer a capa aerea.
-- Menu inferior derecho de construccion con pestanas por categoria.
+- Menu inferior derecho de construccion con bloques en fila y categorias a la derecha en grilla de 2 columnas.
+- Categorias ordenadas como torretas, extractores, transportadoras, energia, muros, fabricas, unidades y apoyo.
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Bloque especial `NUCLEO` en apoyo, con huella de 7 hexes y respawn con `V`.
+- Nucleo inicial ya construido en el origen, ocupando correctamente sus 7 hexes.
 - Recursos infinitos para pruebas de construccion.
 - Preview tenue del bloque seleccionado siguiendo el mouse.
 - Construcciones y deconstrucciones encoladas con siluetas translucidas.
@@ -148,13 +150,16 @@ Si no hay bloque seleccionado, mantener click izquierdo dispara automaticamente 
 
 ## Menu de construccion
 
-El menu inferior derecho contiene pestanas para categorias futuras:
+El menu inferior derecho muestra los bloques disponibles en una fila horizontal. Las categorias estan a la derecha del listado de bloques, dispuestas en una grilla de 2 columnas.
+
+Orden de categorias:
 
 - torretas;
 - extractores;
-- transportadores;
-- fabricas;
+- transportadoras;
+- energia;
 - muros;
+- fabricas;
 - unidades;
 - apoyo.
 
