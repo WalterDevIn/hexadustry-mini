@@ -72,22 +72,28 @@ function createBuildingFromConstruction(construction, definition) {
   };
 }
 
+function clearCompletedAimLock(gameState, constructionId) {
+  if (gameState.playerAimLock?.constructionId === constructionId) {
+    gameState.playerAimLock = null;
+  }
+}
+
 export function requestBuildAt(gameState, q, r) {
   const selectedBlockId = gameState.ui.buildMenu.selectedBlockId;
   const definition = getBuildingDefinition(selectedBlockId);
 
-  if (!definition) return false;
-  if (definition.type !== "wall") return false;
+  if (!definition) return null;
+  if (definition.type !== "wall") return null;
 
   const footprint = getBuildingFootprint(definition);
   const occupiedHexes = getAbsoluteFootprint(q, r, footprint);
 
-  if (isFootprintOccupied(gameState.mapWorld, occupiedHexes)) return false;
-  if (!hasEnoughResources(gameState.mapWorld.resources, definition.cost)) return false;
+  if (isFootprintOccupied(gameState.mapWorld, occupiedHexes)) return null;
+  if (!hasEnoughResources(gameState.mapWorld.resources, definition.cost)) return null;
 
   subtractResources(gameState.mapWorld.resources, definition.cost);
 
-  gameState.mapWorld.pendingConstructions.push({
+  const construction = {
     id: createConstructionId(definition, q, r),
     definitionId: definition.id,
     q,
@@ -96,9 +102,11 @@ export function requestBuildAt(gameState, q, r) {
     occupiedHexes,
     elapsed: 0,
     totalTime: getBuildTime(definition),
-  });
+  };
 
-  return true;
+  gameState.mapWorld.pendingConstructions.push(construction);
+
+  return construction;
 }
 
 export function requestDeconstructAt(gameState, q, r) {
@@ -145,8 +153,15 @@ export function constructionSystem(gameState, dt) {
   for (const construction of completed) {
     const definition = getBuildingDefinition(construction.definitionId);
 
-    if (!definition) continue;
-    if (isFootprintOccupied(world, construction.occupiedHexes)) continue;
+    if (!definition) {
+      clearCompletedAimLock(gameState, construction.id);
+      continue;
+    }
+
+    if (isFootprintOccupied(world, construction.occupiedHexes)) {
+      clearCompletedAimLock(gameState, construction.id);
+      continue;
+    }
 
     const building = createBuildingFromConstruction(construction, definition);
 
@@ -156,5 +171,7 @@ export function constructionSystem(gameState, dt) {
       const tile = world.getOrCreateTile(hex.q, hex.r);
       tile.layers.surface.buildingId = building.id;
     }
+
+    clearCompletedAimLock(gameState, construction.id);
   }
 }
