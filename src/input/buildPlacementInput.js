@@ -51,7 +51,7 @@ function getPointerAnchorHex(gameState, pointerWorld) {
   const definition = getSelectedBuildDefinition(gameState);
   const hexSize = gameState.mapWorld.hexSize;
 
-  if (!definition?.centerPreviewOnMouse) {
+  if (!definition?.snapMouseToFootprintCenter) {
     return roundAxial(pixelToAxial(pointerWorld, hexSize));
   }
 
