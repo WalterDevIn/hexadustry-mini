@@ -11,12 +11,6 @@ const DEFAULT_RENDER_COLORS = {
   aura: "rgba(255, 255, 255, 0.22)",
 };
 
-const PLAYER_YELLOW = {
-  stroke: "rgba(255, 226, 64, 0.98)",
-  fill: "rgba(255, 226, 64, 0.12)",
-  detail: "rgba(255, 236, 126, 0.88)",
-};
-
 const BUILD_ANIMATION_YELLOW = [255, 226, 64];
 const BUILD_ANIMATION_RED = [255, 64, 64];
 
@@ -44,13 +38,20 @@ const ROCK_CLUSTER_FOOTPRINTS = {
 };
 
 const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
-
 const ENTITY_GLYPHS = {
   core: "CORE",
   drill: "DRL",
   conveyor: ">>>",
   turret: "TRT",
 };
+
+function rgba(color, alpha) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+}
+
+function easeOutCubic(t) {
+  return 1 - (1 - t) ** 3;
+}
 
 function drawPath(ctx, points) {
   ctx.beginPath();
@@ -61,34 +62,6 @@ function drawPath(ctx, points) {
   }
 
   ctx.closePath();
-}
-
-function rgba(color, alpha) {
-  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
-}
-
-function easeOutCubic(t) {
-  return 1 - (1 - t) ** 3;
-}
-
-function drawGroundLayer(ctx, hex, tile, size, origin) {
-  const groundLayer = tile.layers.ground;
-
-  if (!groundLayer.ore) return;
-
-  const polygon = buildHexPolygon(hex, size, origin);
-
-  ctx.beginPath();
-  ctx.arc(polygon.center.x, polygon.center.y, size * 0.16, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
-  ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
 }
 
 function makeRelativeKey(q, r) {
@@ -239,6 +212,13 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
   strokeCornerSegments(ctx, innerSegments, 0.28);
 }
 
+function drawQueuedBuildPreviewShape(ctx, source, size) {
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  drawHexWallShape(ctx, source, size, 0.72);
+  ctx.restore();
+}
+
 function drawAnimatedWallShape(ctx, source, size, color, alpha, scale) {
   const footprint = getWallFootprint(source);
   const wallCenter = getWallCenter(footprint, size);
@@ -255,6 +235,26 @@ function drawAnimatedWallShape(ctx, source, size, color, alpha, scale) {
   }
 
   ctx.restore();
+}
+
+function drawGroundLayer(ctx, hex, tile, size, origin) {
+  const groundLayer = tile.layers.ground;
+
+  if (!groundLayer.ore) return;
+
+  const polygon = buildHexPolygon(hex, size, origin);
+
+  ctx.beginPath();
+  ctx.arc(polygon.center.x, polygon.center.y, size * 0.16, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+  ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
 }
 
 function getRockClusterStyle(naturalBlockType, alpha) {
@@ -526,11 +526,16 @@ function drawBuilding(ctx, building, size, origin) {
 function drawPendingConstruction(ctx, construction, size, origin) {
   const center = axialToPixel(construction, size, origin);
   const progress = Math.min(1, construction.elapsed / construction.totalTime);
-  const scale = 0.16 + easeOutCubic(progress) * 0.84;
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  drawAnimatedWallShape(ctx, construction, size, BUILD_ANIMATION_YELLOW, 0.34, scale);
+  drawQueuedBuildPreviewShape(ctx, construction, size);
+
+  if (progress > 0) {
+    const scale = 0.16 + easeOutCubic(progress) * 0.84;
+    drawAnimatedWallShape(ctx, construction, size, BUILD_ANIMATION_YELLOW, 0.34, scale);
+  }
+
   ctx.restore();
 }
 
@@ -557,8 +562,7 @@ function drawBuildPreview(ctx, gameState, size, origin) {
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.globalAlpha = 0.18;
-  drawHexWallShape(ctx, { footprint }, size, 0.72);
+  drawQueuedBuildPreviewShape(ctx, { footprint }, size);
   ctx.restore();
 }
 
