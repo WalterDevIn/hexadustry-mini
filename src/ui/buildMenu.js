@@ -4,9 +4,10 @@ import { isConstructionModeLocked } from "../systems/constructionSystem.js";
 export const BUILD_CATEGORIES = [
   { id: "turrets", label: "TORRETAS", icon: "⌖" },
   { id: "extractors", label: "EXTRACTORES", icon: "⌬" },
-  { id: "transporters", label: "TRANSPORTADORES", icon: "⇢" },
-  { id: "factories", label: "FABRICAS", icon: "⚙" },
+  { id: "transporters", label: "TRANSPORTADORAS", icon: "⇢" },
+  { id: "energy", label: "ENERGIA", icon: "ϟ" },
   { id: "walls", label: "MUROS", icon: "⬡" },
+  { id: "factories", label: "FABRICAS", icon: "⚙" },
   { id: "units", label: "UNIDADES", icon: "△" },
   { id: "support", label: "APOYO", icon: "+" },
 ];
