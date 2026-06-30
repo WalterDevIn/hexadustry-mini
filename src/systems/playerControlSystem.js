@@ -111,6 +111,26 @@ function updateExhaustParticles(playerControlled, transform, velocity, dt) {
     .slice(-90);
 }
 
+function updatePlayerSpawn(gameState, velocity, playerControlled, dt) {
+  const spawn = gameState.playerSpawn;
+
+  if (!spawn?.active) return false;
+
+  spawn.elapsed = Math.min(spawn.duration, spawn.elapsed + dt);
+  velocity.x = 0;
+  velocity.y = 0;
+  velocity.maxSpeed = velocity.baseMaxSpeed;
+  playerControlled.movementHoldSeconds = 0;
+  playerControlled.exhaustAccumulator = 0;
+  playerControlled.exhaustParticles = [];
+
+  if (spawn.elapsed >= spawn.duration) {
+    spawn.active = false;
+  }
+
+  return true;
+}
+
 export function playerControlSystem(gameState, dt) {
   const { ecsWorld, input, playerEntityId } = gameState;
   const transform = ecsWorld.components.transform.get(playerEntityId);
@@ -125,6 +145,8 @@ export function playerControlSystem(gameState, dt) {
     playerControlled.visualTurnSpeed,
     dt,
   );
+
+  if (updatePlayerSpawn(gameState, velocity, playerControlled, dt)) return;
 
   const axis = getAxis(input);
   const isMoving = axis.length > 0;
