@@ -16,6 +16,16 @@ const WALL_COSTS = {
   },
 };
 
+const HUGE_FOOTPRINT = [
+  { q: 0, r: 0 },
+  { q: 1, r: 0 },
+  { q: 1, r: -1 },
+  { q: 0, r: -1 },
+  { q: -1, r: 0 },
+  { q: -1, r: 1 },
+  { q: 0, r: 1 },
+];
+
 export const BUILDING_DEFINITIONS = {
   basicWall: {
     id: "basicWall",
@@ -77,15 +87,27 @@ export const BUILDING_DEFINITIONS = {
     maxHp: 840,
     solid: true,
     directionMode: "none",
-    footprint: [
-      { q: 0, r: 0 },
-      { q: 1, r: 0 },
-      { q: 1, r: -1 },
-      { q: 0, r: -1 },
-      { q: -1, r: 0 },
-      { q: -1, r: 1 },
-      { q: 0, r: 1 },
-    ],
+    footprint: HUGE_FOOTPRINT,
+    buildComponentCount: 7,
+    buildSecondsPerComponent: 0.18,
+    minimumBuildSeconds: 0.75,
+  },
+  coreBlock: {
+    id: "coreBlock",
+    type: "core",
+    label: "NUCLEO",
+    category: "support",
+    layer: "surface",
+    cost: {
+      copper: 0,
+      lead: 0,
+      graphite: 0,
+    },
+    hp: 1600,
+    maxHp: 1600,
+    solid: true,
+    directionMode: "none",
+    footprint: HUGE_FOOTPRINT,
     buildComponentCount: 7,
     buildSecondsPerComponent: 0.18,
     minimumBuildSeconds: 0.75,
