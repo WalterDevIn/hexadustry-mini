@@ -1,5 +1,6 @@
 import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
 import { makeHexKey } from "../hex/hexMath.js";
+import { maybeGenerateOreVein } from "./oreVeinGeneration.js";
 
 export const MAP_LAYERS = {
   ground: "ground",
@@ -42,12 +43,24 @@ function createWorldTile(world, q, r) {
   return tile;
 }
 
+function ensureGroundOre(world, q, r) {
+  const key = makeHexKey(q, r);
+  const tile = world.tileMap.get(key);
+
+  if (tile?.layers.ground.ore) return tile;
+
+  maybeGenerateOreVein(world, q, r);
+
+  return world.tileMap.get(key) ?? tile;
+}
+
 function placeOre(world, q, r, oreType, amount) {
   const tile = createWorldTile(world, q, r);
 
   tile.layers.ground.ore = {
     type: oreType,
     amount,
+    generated: false,
   };
 }
 
@@ -110,7 +123,13 @@ function placeInitialCore(world, q, r) {
 
 export function getTile(world, q, r) {
   const key = makeHexKey(q, r);
-  return world.tileMap.get(key) ?? createTile(q, r);
+  const existingTile = world.tileMap.get(key);
+
+  if (existingTile) return existingTile;
+
+  const generatedTile = ensureGroundOre(world, q, r);
+
+  return generatedTile ?? createTile(q, r);
 }
 
 export function createInitialWorld() {
@@ -144,13 +163,6 @@ export function createInitialWorld() {
   };
 
   world.getOrCreateTile = (q, r) => createWorldTile(world, q, r);
-
-  placeOre(world, -3, 1, "copper", 800);
-  placeOre(world, -2, 1, "copper", 650);
-  placeOre(world, -2, 2, "copper", 620);
-  placeOre(world, 2, -3, "copper", 500);
-  placeOre(world, 12, -5, "copper", 900);
-  placeOre(world, -15, 8, "copper", 760);
 
   placeNaturalBlock(world, 3, 0, "stone", 180);
   placeNaturalBlock(world, 4, -1, "stone", 180);
