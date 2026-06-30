@@ -6,6 +6,8 @@ export const MAP_LAYERS = {
   air: "air",
 };
 
+export const WORLD_HEX_SIZE = 22;
+
 function createTile(q, r) {
   return {
     q,
@@ -77,6 +79,7 @@ export function createInitialWorld() {
   const world = {
     seed: 73291,
     mapRadius: 512,
+    hexSize: WORLD_HEX_SIZE,
     tileMap: new Map(),
     generatedChunks: new Set(),
     layers: {
