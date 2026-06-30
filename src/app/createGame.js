@@ -3,6 +3,7 @@ import { bindBuildPlacementInput } from "../input/buildPlacementInput.js";
 import { bindKeyboardInput } from "../input/keyboardInput.js";
 import { createCanvasRenderer } from "../render/canvasRenderer.js";
 import { constructionSystem } from "../systems/constructionSystem.js";
+import { respawnPlayerAtCore } from "../systems/coreRespawnSystem.js";
 import { enemyAiSystem } from "../systems/enemyAiSystem.js";
 import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
@@ -16,7 +17,9 @@ const MAX_DT = 1 / 20;
 export function createGame(canvas) {
   const gameState = createInitialGameState();
   const renderer = createCanvasRenderer(canvas, gameState);
-  const unbindKeyboardInput = bindKeyboardInput(gameState.input);
+  const unbindKeyboardInput = bindKeyboardInput(gameState.input, {
+    respawnAtCore: () => respawnPlayerAtCore(gameState),
+  });
   const unbindBuildMenu = bindBuildMenu(gameState);
   const unbindBuildPlacementInput = bindBuildPlacementInput(canvas, gameState);
 
