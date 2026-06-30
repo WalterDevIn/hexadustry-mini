@@ -2,7 +2,7 @@ import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../co
 import { axialToPixel, makeHexKey } from "../hex/hexMath.js";
 
 const BUILD_TIME_MULTIPLIER = 4;
-const BUILDABLE_TYPES = new Set(["wall", "core"]);
+const BUILDABLE_TYPES = new Set(["wall", "core", "drill"]);
 
 let nextConstructionOperationOrder = 1;
 
@@ -121,8 +121,23 @@ function createConstructionId(definition, q, r) {
   return `${definition.id}-${makeHexKey(q, r)}-${Date.now()}-${nextConstructionOperationOrder}`;
 }
 
-function createBuildingFromConstruction(construction, definition) {
+function createDrillState(definition) {
+  if (definition.type !== "drill") return null;
+
   return {
+    extractedType: null,
+    storedType: null,
+    storedAmount: 0,
+    capacity: definition.storageCapacity ?? 10,
+    rate: definition.drillRate ?? 1,
+    progress: 0,
+    bladeRotation: 0,
+    isDrilling: false,
+  };
+}
+
+function createBuildingFromConstruction(construction, definition) {
+  const building = {
     id: construction.id,
     definitionId: definition.id,
     type: definition.type,
@@ -138,6 +153,13 @@ function createBuildingFromConstruction(construction, definition) {
     constructed: true,
     cost: { ...definition.cost },
   };
+  const drillState = createDrillState(definition);
+
+  if (drillState) {
+    building.drill = drillState;
+  }
+
+  return building;
 }
 
 function removeBuilding(world, building) {
