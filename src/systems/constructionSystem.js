@@ -2,6 +2,7 @@ import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../co
 import { axialToPixel, makeHexKey } from "../hex/hexMath.js";
 
 const BUILD_TIME_MULTIPLIER = 4;
+const BUILDABLE_TYPES = new Set(["wall", "core"]);
 
 let nextConstructionOperationOrder = 1;
 
@@ -179,7 +180,7 @@ export function requestBuildAt(gameState, q, r) {
   const definition = getBuildingDefinition(selectedBlockId);
 
   if (!definition) return null;
-  if (definition.type !== "wall") return null;
+  if (!BUILDABLE_TYPES.has(definition.type)) return null;
 
   const footprint = getBuildingFootprint(definition, rotationIndex);
   const occupiedHexes = getAbsoluteFootprint(q, r, footprint);
