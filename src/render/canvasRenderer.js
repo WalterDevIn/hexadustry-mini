@@ -13,7 +13,7 @@ const DEFAULT_RENDER_COLORS = {
 const PLAYER_YELLOW = {
   stroke: "rgba(255, 226, 64, 0.98)",
   fill: "rgba(255, 226, 64, 0.12)",
-  detail: "rgba(255, 236, 126, 0.78)",
+  detail: "rgba(255, 236, 126, 0.88)",
 };
 
 const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
@@ -114,7 +114,7 @@ function strokeSegments(ctx, segments) {
 }
 
 function fillWallFootprint(ctx, footprint, size, alpha) {
-  ctx.fillStyle = `rgba(255, 226, 64, ${0.045 * alpha})`;
+  ctx.fillStyle = `rgba(255, 226, 64, ${0.06 * alpha})`;
 
   for (const hex of footprint) {
     drawPath(ctx, getWallCorners(hex, size, 1));
@@ -123,9 +123,30 @@ function fillWallFootprint(ctx, footprint, size, alpha) {
 }
 
 function getInnerWallRadiusScale(size) {
-  const insetPixels = Math.min(2, Math.max(1.2, size * 0.075));
+  const insetPixels = Math.min(4.5, Math.max(3, size * 0.16));
 
-  return Math.max(0.88, 1 - insetPixels / size);
+  return Math.max(0.74, 1 - insetPixels / size);
+}
+
+function drawWallInternalRibs(ctx, footprint, size, alpha) {
+  if (footprint.length <= 1) return;
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.24 * alpha})`;
+  ctx.lineWidth = 1;
+
+  for (const hex of footprint) {
+    const center = axialToPixel(hex, size);
+    const innerCorners = getWallCorners(hex, size, getInnerWallRadiusScale(size));
+
+    for (let i = 0; i < innerCorners.length; i += 2) {
+      const corner = innerCorners[i];
+
+      ctx.beginPath();
+      ctx.moveTo(center.x + (corner.x - center.x) * 0.22, center.y + (corner.y - center.y) * 0.22);
+      ctx.lineTo(center.x + (corner.x - center.x) * 0.46, center.y + (corner.y - center.y) * 0.46);
+      ctx.stroke();
+    }
+  }
 }
 
 function drawHexWallShape(ctx, source, size, alpha = 1) {
@@ -137,12 +158,14 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
   fillWallFootprint(ctx, footprint, size, alpha);
 
   ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = 2.25;
   strokeSegments(ctx, outerSegments);
 
-  ctx.strokeStyle = `rgba(255, 236, 126, ${0.72 * alpha})`;
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.96 * alpha})`;
+  ctx.lineWidth = 1.75;
   strokeSegments(ctx, innerSegments);
+
+  drawWallInternalRibs(ctx, footprint, size, alpha);
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
