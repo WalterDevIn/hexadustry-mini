@@ -1,4 +1,5 @@
 import { getBuildingDefinition } from "../content/buildingDefinitions.js";
+import { getTile } from "../world/createInitialWorld.js";
 
 const MINERAL_PRIORITY = {
   copper: 3,
@@ -10,7 +11,7 @@ function countFootprintOre(mapWorld, building) {
   const counts = new Map();
 
   for (const hex of building.occupiedHexes ?? [{ q: building.q, r: building.r }]) {
-    const ore = mapWorld.getOrCreateTile(hex.q, hex.r).layers.ground.ore;
+    const ore = getTile(mapWorld, hex.q, hex.r).layers.ground.ore;
 
     if (!ore) continue;
 
