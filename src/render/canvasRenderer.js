@@ -1,3 +1,4 @@
+import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
 import { queryEntities } from "../ecs/createWorld.js";
 import { axialToPixel, buildHexPolygon, generateVisibleHexes, hexCorner, HEX_DIRECTIONS } from "../hex/hexMath.js";
 import { ensureChunksForHexes } from "../world/chunkedCaveGeneration.js";
@@ -285,6 +286,10 @@ function drawBuilding(ctx, building, size, origin) {
   ctx.save();
   ctx.translate(center.x, center.y);
 
+  if (building.deconstructing) {
+    ctx.globalAlpha = 0.46;
+  }
+
   ctx.strokeStyle = "rgba(255, 255, 255, 0.94)";
   ctx.fillStyle = "rgba(0, 0, 0, 0.84)";
   ctx.lineWidth = 2;
@@ -351,6 +356,40 @@ function drawPendingConstruction(ctx, construction, size, origin) {
   ctx.textBaseline = "middle";
   ctx.fillStyle = `rgba(255, 236, 126, ${0.72 + progress * 0.2})`;
   ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
+  ctx.restore();
+}
+
+function drawPendingDeconstruction(ctx, deconstruction, size, origin) {
+  const center = axialToPixel(deconstruction, size, origin);
+  const progress = Math.min(1, deconstruction.elapsed / deconstruction.totalTime);
+
+  ctx.save();
+  ctx.translate(center.x, center.y);
+  ctx.globalAlpha = 0.26 + (1 - progress) * 0.28;
+  drawHexWallShape(ctx, deconstruction, size, 0.7);
+
+  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = `rgba(255, 236, 126, ${0.84 - progress * 0.28})`;
+  ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
+  ctx.restore();
+}
+
+function drawBuildPreview(ctx, gameState, size, origin) {
+  const hoveredHex = gameState.ui.buildMenu.hoveredHex;
+  const selectedBlockId = gameState.ui.buildMenu.selectedBlockId;
+  const definition = getBuildingDefinition(selectedBlockId);
+
+  if (!hoveredHex || !definition) return;
+
+  const footprint = getBuildingFootprint(definition, gameState.ui.buildMenu.rotationIndex);
+  const center = axialToPixel(hoveredHex, size, origin);
+
+  ctx.save();
+  ctx.translate(center.x, center.y);
+  ctx.globalAlpha = 0.18;
+  drawHexWallShape(ctx, { footprint }, size, 0.72);
   ctx.restore();
 }
 
@@ -532,12 +571,18 @@ export function createCanvasRenderer(canvas, gameState) {
       drawSurfaceLayer(ctx, hex, tile, hexSize, origin);
     }
 
+    drawBuildPreview(ctx, gameState, hexSize, origin);
+
     for (const construction of mapWorld.pendingConstructions) {
       drawPendingConstruction(ctx, construction, hexSize, origin);
     }
 
     for (const building of mapWorld.buildings) {
       drawBuilding(ctx, building, hexSize, origin);
+    }
+
+    for (const deconstruction of mapWorld.pendingDeconstructions) {
+      drawPendingDeconstruction(ctx, deconstruction, hexSize, origin);
     }
 
     drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.surface, origin);
