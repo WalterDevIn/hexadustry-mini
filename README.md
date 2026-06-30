@@ -22,6 +22,9 @@ La version actual contiene:
 - Canvas fullscreen.
 - Fondo negro con lineas blancas y scanlines suaves.
 - Mapa hexagonal pointy-top con coordenadas axiales `q,r`.
+- Grilla virtual grande: el mapa tiene radio amplio, pero solo se dibujan los hexes visibles en camara.
+- Hexagonos al `0.8` del tamaño visual anterior.
+- Camara centrada en la nave del jugador.
 - Minerales prototipo.
 - Nucleo.
 - Extractor.
@@ -82,7 +85,18 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `playerControlSystem`: lee input y acelera la nave del jugador.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `movementSystem`: aplica velocidad sobre transform.
-- `canvasRenderer`: no decide gameplay; solo dibuja mapa y entidades renderizables.
+- `canvasRenderer`: no decide gameplay; solo dibuja mapa, grilla visible y entidades renderizables.
+
+## Mapa y camara
+
+El mapa ya no se dibuja iterando una lista completa de hexagonos. `generateVisibleHexes` calcula los hexagonos que entran en la pantalla segun:
+
+- posicion del jugador;
+- tamaño del viewport;
+- tamaño actual del hexagono;
+- radio maximo del mapa.
+
+El estado del mapa es sparse: `tileMap` solo guarda tiles especiales, como minerales o edificios. Los tiles vacios se construyen temporalmente al renderizar.
 
 ## Convenciones iniciales
 
