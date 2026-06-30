@@ -15,7 +15,8 @@ Controles actuales:
 WASD / Flechas = mover nave del jugador
 Mouse = apuntado del jugador
 Click izquierdo = colocar bloque seleccionado
-Click derecho = deconstruir bloque construido
+Click derecho = iniciar deconstruccion del bloque construido
+R = rotar el bloque seleccionado cuando tenga rotaciones
 ```
 
 ## Estado actual
@@ -38,8 +39,10 @@ La version actual contiene:
 - Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
 - Menu inferior derecho de construccion con pestanas por categoria.
 - Tres bloques construibles de muro: chico, grande y enorme.
+- Recursos infinitos para pruebas de construccion.
+- Preview tenue del bloque seleccionado siguiendo el mouse.
 - Construccion diferida con preview translucido.
-- Deconstruccion de bloques construidos con click derecho.
+- Deconstruccion diferida con click derecho.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
@@ -107,7 +110,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
-- `constructionSystem`: procesa construcciones pendientes y crea edificios terminados.
+- `constructionSystem`: procesa construcciones y deconstrucciones pendientes.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
 
 ## Jugador
@@ -130,20 +133,19 @@ El menu inferior derecho contiene pestanas para categorias futuras:
 - unidades;
 - apoyo.
 
-La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`.
+La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`. La rotacion actual se guarda en `gameState.ui.buildMenu.rotationIndex`.
 
 ## Muros construibles
 
 Hay tres muros construibles en la pestana `MUROS`:
 
-- `basicWall`: ocupa 1 hex.
-- `largeWall`: ocupa 3 hexes unidos.
-- `hugeWall`: ocupa 7 hexes, un hex central completamente rodeado.
+- `basicWall`: ocupa 1 hex y cuesta `8 copper`.
+- `largeWall`: ocupa 3 hexes unidos, cuesta `24 copper` y tiene 2 rotaciones alternables con `R`.
+- `hugeWall`: ocupa 7 hexes, un hex central completamente rodeado, y cuesta `56 copper` + `8 graphite`.
 
 Todos los muros:
 
 - son solidos;
-- no tienen direccion;
 - bloquean enemigos terrestres;
 - usan el color amarillo del jugador;
 - se renderizan como una figura construida, no como piedra natural.
@@ -154,10 +156,13 @@ Flujo:
 
 1. Abrir la pestana `MUROS`.
 2. Seleccionar un muro.
-3. Hacer click izquierdo sobre un hex libre.
-4. Aparece una construccion translucida.
-5. Al terminar el tiempo de construccion, aparece el muro solido.
-6. Click derecho sobre cualquier hex ocupado por el muro lo deconstruye completo y devuelve sus materiales.
+3. Mover el mouse para ver la previa tenue.
+4. Rotar con `R` si el muro seleccionado lo permite.
+5. Hacer click izquierdo sobre un hex libre.
+6. Aparece una construccion translucida.
+7. Al terminar el tiempo de construccion, aparece el muro solido.
+8. Click derecho sobre cualquier hex ocupado por el muro inicia deconstruccion.
+9. Al terminar el tiempo de deconstruccion, el muro desaparece y devuelve sus materiales.
 
 ## Capas del mapa
 
