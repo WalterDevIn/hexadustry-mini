@@ -1,5 +1,5 @@
 import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../content/buildingDefinitions.js";
-import { makeHexKey } from "../hex/hexMath.js";
+import { axialToPixel, makeHexKey } from "../hex/hexMath.js";
 
 const BUILD_TIME_MULTIPLIER = 4;
 
@@ -39,6 +39,48 @@ function getAbsoluteFootprint(anchorQ, anchorR, footprint) {
     q: anchorQ + hex.q,
     r: anchorR + hex.r,
   }));
+}
+
+function getFootprintCenterOffset(footprint, hexSize) {
+  const total = footprint.reduce(
+    (sum, hex) => {
+      const center = axialToPixel(hex, hexSize);
+
+      return {
+        x: sum.x + center.x,
+        y: sum.y + center.y,
+      };
+    },
+    { x: 0, y: 0 },
+  );
+
+  return {
+    x: total.x / footprint.length,
+    y: total.y / footprint.length,
+  };
+}
+
+function getOperationAimTarget(world, operation) {
+  const anchor = axialToPixel(operation, world.hexSize);
+  const footprintCenter = getFootprintCenterOffset(operation.footprint, world.hexSize);
+
+  return {
+    x: anchor.x + footprintCenter.x,
+    y: anchor.y + footprintCenter.y,
+  };
+}
+
+function setConstructionAimLock(gameState, activeOperation) {
+  if (!activeOperation) {
+    gameState.playerAimLock = null;
+    return;
+  }
+
+  gameState.playerAimLock = {
+    constructionId: activeOperation.operation.id,
+    type: activeOperation.type,
+    target: getOperationAimTarget(gameState.mapWorld, activeOperation.operation),
+  };
 }
 
 function findBuildingAt(world, q, r) {
@@ -114,6 +156,11 @@ function getActiveConstructionOperation(world) {
   return operations.reduce((oldest, candidate) => {
     return candidate.operation.operationOrder < oldest.operation.operationOrder ? candidate : oldest;
   });
+}
+
+export function isConstructionModeLocked(gameState) {
+  return gameState.mapWorld.pendingConstructions.length > 0
+    || gameState.mapWorld.pendingDeconstructions.length > 0;
 }
 
 export function getSelectedBuildFootprint(gameState) {
@@ -195,6 +242,8 @@ export function constructionSystem(gameState, dt) {
   const world = gameState.mapWorld;
   const activeOperation = getActiveConstructionOperation(world);
 
+  setConstructionAimLock(gameState, activeOperation);
+
   if (activeOperation) {
     activeOperation.operation.elapsed += dt;
   }
@@ -237,5 +286,9 @@ export function constructionSystem(gameState, dt) {
 
     removeBuilding(world, building);
     addResources(world.resources, deconstruction.refundCost);
+  }
+
+  if (!isConstructionModeLocked(gameState)) {
+    gameState.playerAimLock = null;
   }
 }
