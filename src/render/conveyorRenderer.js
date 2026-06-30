@@ -2,9 +2,10 @@ import { axialToPixel, buildHexPolygon, HEX_DIRECTIONS } from "../hex/hexMath.js
 import { getOreColor } from "./terrainRenderer.js";
 
 const EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
+const DIRECTION_COUNT = HEX_DIRECTIONS.length;
 
 function getDirectionVector(directionIndex, size) {
-  const direction = HEX_DIRECTIONS[directionIndex % HEX_DIRECTIONS.length];
+  const direction = HEX_DIRECTIONS[directionIndex % DIRECTION_COUNT];
   const end = axialToPixel(direction, size);
   const length = Math.hypot(end.x, end.y) || 1;
 
@@ -33,24 +34,35 @@ function canVisuallyConnect(building) {
   return false;
 }
 
+function toLocalSide(worldSide, outputSide) {
+  return (worldSide - outputSide + DIRECTION_COUNT) % DIRECTION_COUNT;
+}
+
+function toWorldSide(localSide, outputSide) {
+  return (localSide + outputSide) % DIRECTION_COUNT;
+}
+
 function getConnectedInputSides(mapWorld, building) {
+  const outputSide = building.direction ?? 0;
+
   if (!mapWorld) return [3];
 
-  const outputSide = building.direction ?? 0;
-  const sides = [];
+  const localSides = [];
 
-  for (let sideIndex = 0; sideIndex < HEX_DIRECTIONS.length; sideIndex += 1) {
-    if (sideIndex === outputSide) continue;
+  for (let worldSide = 0; worldSide < DIRECTION_COUNT; worldSide += 1) {
+    if (worldSide === outputSide) continue;
 
-    const direction = HEX_DIRECTIONS[sideIndex];
+    const direction = HEX_DIRECTIONS[worldSide];
     const neighbor = getBuildingAt(mapWorld, building.q + direction.q, building.r + direction.r);
 
-    if (canVisuallyConnect(neighbor)) sides.push(sideIndex);
+    if (canVisuallyConnect(neighbor)) {
+      localSides.push(toLocalSide(worldSide, outputSide));
+    }
   }
 
-  if (sides.length === 0) return [(outputSide + 3) % HEX_DIRECTIONS.length];
+  if (localSides.length === 0) return [3];
 
-  return sides;
+  return localSides;
 }
 
 function getHexCorners(size) {
@@ -66,8 +78,13 @@ function getSideEdge(corners, sideIndex) {
   };
 }
 
+function samePoint(a, b) {
+  return Math.abs(a.x - b.x) < 0.001 && Math.abs(a.y - b.y) < 0.001;
+}
+
 function sameEdge(edgeA, edgeB) {
-  return edgeA.a === edgeB.a && edgeA.b === edgeB.b;
+  return (samePoint(edgeA.a, edgeB.a) && samePoint(edgeA.b, edgeB.b))
+    || (samePoint(edgeA.a, edgeB.b) && samePoint(edgeA.b, edgeB.a));
 }
 
 function drawOuterHexWithoutEdges(ctx, corners, removedEdges, alpha) {
@@ -147,13 +164,13 @@ function getMiddleRoute(inputEdge, outputEdge) {
   return { start, end };
 }
 
-function drawConveyorItem(ctx, building, inputEdgesBySide, outputEdge, alpha) {
+function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha) {
   const item = building.conveyor?.item;
   if (!item) return;
 
   const transferSeconds = building.conveyor.transferSeconds || 0.33;
   const progress = Math.min(1, building.conveyor.progress / transferSeconds);
-  const inputEdge = inputEdgesBySide.get(item.entryDirection) ?? inputEdgesBySide.values().next().value;
+  const inputEdge = inputEdgesByWorldSide.get(item.entryDirection) ?? inputEdgesByWorldSide.values().next().value;
 
   if (!inputEdge) return;
 
@@ -172,12 +189,15 @@ function drawConveyorItem(ctx, building, inputEdgesBySide, outputEdge, alpha) {
 }
 
 export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = null) {
-  const direction = getDirectionVector(building.direction ?? 0, size);
-  const inputSides = getConnectedInputSides(mapWorld, building);
+  const outputSide = building.direction ?? 0;
+  const direction = getDirectionVector(outputSide, size);
+  const localInputSides = getConnectedInputSides(mapWorld, building);
   const corners = getHexCorners(size);
   const outputEdge = getSideEdge(corners, 0);
-  const inputEdges = inputSides.map((sideIndex) => getSideEdge(corners, sideIndex));
-  const inputEdgesBySide = new Map(inputSides.map((sideIndex, index) => [sideIndex, inputEdges[index]]));
+  const inputEdges = localInputSides.map((localSide) => getSideEdge(corners, localSide));
+  const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => {
+    return [toWorldSide(localSide, outputSide), inputEdges[index]];
+  }));
 
   ctx.save();
   ctx.rotate(direction.angle);
@@ -187,6 +207,6 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
     drawConnectorLines(ctx, inputEdge, outputEdge, alpha);
   }
 
-  drawConveyorItem(ctx, building, inputEdgesBySide, outputEdge, alpha);
+  drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha);
   ctx.restore();
 }
