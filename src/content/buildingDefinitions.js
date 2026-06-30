@@ -44,7 +44,7 @@ export const BUILDING_DEFINITIONS = {
     maxHp: 360,
     solid: true,
     directionMode: "two-way",
-    centerPreviewOnMouse: true,
+    snapMouseToFootprintCenter: true,
     footprint: [
       { q: 0, r: 0 },
       { q: 1, r: 0 },
