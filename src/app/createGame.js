@@ -7,6 +7,8 @@ import { enemyAiSystem } from "../systems/enemyAiSystem.js";
 import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
 import { playerControlSystem } from "../systems/playerControlSystem.js";
+import { playerTurretSystem } from "../systems/playerTurretSystem.js";
+import { projectileSystem } from "../systems/projectileSystem.js";
 import { bindBuildMenu } from "../ui/buildMenu.js";
 
 const MAX_DT = 1 / 20;
@@ -22,9 +24,11 @@ export function createGame(canvas) {
 
   function update(dt) {
     playerControlSystem(gameState, dt);
+    playerTurretSystem(gameState, dt);
     enemyAiSystem(gameState, dt);
     groundEnemySystem(gameState, dt);
     movementSystem(gameState, dt);
+    projectileSystem(gameState, dt);
     constructionSystem(gameState, dt);
   }
 
