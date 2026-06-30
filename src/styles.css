@@ -27,6 +27,10 @@ body {
   font-family: "Courier New", Courier, monospace;
 }
 
+button {
+  font: inherit;
+}
+
 .game-shell {
   position: relative;
   width: 100vw;
@@ -75,4 +79,87 @@ body {
 .hud-panel span {
   font-size: 11px;
   opacity: 0.82;
+}
+
+.build-menu {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--line-mid);
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.08);
+}
+
+.build-menu__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-dim);
+}
+
+.build-menu__header strong {
+  font-size: 13px;
+}
+
+.build-menu__header span {
+  font-size: 10px;
+  opacity: 0.68;
+}
+
+.build-menu__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.build-menu__tab {
+  min-height: 30px;
+  border: 1px solid var(--line-dim);
+  background: rgba(0, 0, 0, 0.52);
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-align: left;
+}
+
+.build-menu__tab:hover,
+.build-menu__tab:focus-visible {
+  border-color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.96);
+  outline: none;
+}
+
+.build-menu__tab.is-active {
+  border-color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.build-menu__body {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--line-dim);
+}
+
+.build-menu__body span {
+  font-size: 12px;
+}
+
+.build-menu__body small {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
 }
