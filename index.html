@@ -21,22 +21,27 @@
           <span id="build-menu-status">sin bloque seleccionado</span>
         </header>
 
-        <nav class="build-menu__tabs" aria-label="Categorias de construccion">
-          <button class="build-menu__tab is-active" type="button" data-build-category="turrets" title="TORRETAS" aria-label="TORRETAS">⌖</button>
-          <button class="build-menu__tab" type="button" data-build-category="extractors" title="EXTRACTORES" aria-label="EXTRACTORES">⌬</button>
-          <button class="build-menu__tab" type="button" data-build-category="transporters" title="TRANSPORTADORES" aria-label="TRANSPORTADORES">⇢</button>
-          <button class="build-menu__tab" type="button" data-build-category="factories" title="FABRICAS" aria-label="FABRICAS">⚙</button>
-          <button class="build-menu__tab" type="button" data-build-category="walls" title="MUROS" aria-label="MUROS">⬡</button>
-          <button class="build-menu__tab" type="button" data-build-category="units" title="UNIDADES" aria-label="UNIDADES">△</button>
-          <button class="build-menu__tab" type="button" data-build-category="support" title="APOYO" aria-label="APOYO">+</button>
-        </nav>
+        <section class="build-menu__main">
+          <section class="build-menu__content">
+            <section class="build-menu__body">
+              <span id="build-menu-category-label">TORRETAS</span>
+              <small>click izq. coloca / click der. deconstruye</small>
+            </section>
 
-        <section class="build-menu__body">
-          <span id="build-menu-category-label">TORRETAS</span>
-          <small>click izq. coloca / click der. deconstruye</small>
+            <section id="build-menu-block-list" class="build-menu__blocks" aria-label="Bloques disponibles"></section>
+          </section>
+
+          <nav class="build-menu__tabs" aria-label="Categorias de construccion">
+            <button class="build-menu__tab is-active" type="button" data-build-category="turrets" title="TORRETAS" aria-label="TORRETAS">⌖</button>
+            <button class="build-menu__tab" type="button" data-build-category="extractors" title="EXTRACTORES" aria-label="EXTRACTORES">⌬</button>
+            <button class="build-menu__tab" type="button" data-build-category="transporters" title="TRANSPORTADORAS" aria-label="TRANSPORTADORAS">⇢</button>
+            <button class="build-menu__tab" type="button" data-build-category="energy" title="ENERGIA" aria-label="ENERGIA">ϟ</button>
+            <button class="build-menu__tab" type="button" data-build-category="walls" title="MUROS" aria-label="MUROS">⬡</button>
+            <button class="build-menu__tab" type="button" data-build-category="factories" title="FABRICAS" aria-label="FABRICAS">⚙</button>
+            <button class="build-menu__tab" type="button" data-build-category="units" title="UNIDADES" aria-label="UNIDADES">△</button>
+            <button class="build-menu__tab" type="button" data-build-category="support" title="APOYO" aria-label="APOYO">+</button>
+          </nav>
         </section>
-
-        <section id="build-menu-block-list" class="build-menu__blocks" aria-label="Bloques disponibles"></section>
       </section>
 
       <section class="hud-panel hud-panel--bottom">
