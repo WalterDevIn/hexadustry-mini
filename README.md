@@ -13,6 +13,7 @@ Controles actuales:
 
 ```txt
 WASD / Flechas = mover nave del jugador
+Mouse = apuntado del jugador
 Click izquierdo = colocar bloque seleccionado
 Click derecho = deconstruir bloque construido
 ```
@@ -33,6 +34,8 @@ La version actual contiene:
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
+- Jugador con apuntado instantaneo al mouse, salvo mientras construye.
+- Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
 - Menu inferior derecho de construccion con pestanas por categoria.
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Construccion diferida con preview translucido.
@@ -100,12 +103,20 @@ Las entidades son solo IDs numericos. No contienen logica.
 
 ### Sistemas actuales
 
-- `playerControlSystem`: lee input y acelera la nave del jugador.
+- `playerControlSystem`: lee input, apunta al mouse/construccion y acelera la nave del jugador.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
 - `constructionSystem`: procesa construcciones pendientes y crea edificios terminados.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
+
+## Jugador
+
+El jugador apunta instantaneamente al mouse. La rotacion visual no depende de la direccion de movimiento.
+
+Mientras una construccion esta en curso, el jugador bloquea el apuntado hacia el hex donde empezo esa construccion. Cuando la construccion termina, vuelve a apuntar al mouse.
+
+El movimiento es vectorial: se puede acelerar en cualquier direccion usando WASD o flechas. La nave tiene inercia, tarda un poco en frenar y su velocidad maxima sube progresivamente hasta 2x despues de 3 segundos continuos de movimiento.
 
 ## Menu de construccion
 
