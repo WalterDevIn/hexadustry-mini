@@ -4,12 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hexadustry Mini</title>
+    <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
     <main id="app" class="game-shell">
       <section class="hud-panel hud-panel--top">
         <strong>HEXADUSTRY MINI</strong>
-        <span>retro hex factory prototype</span>
+        <span id="boot-status">iniciando canvas...</span>
       </section>
 
       <canvas id="game-canvas" aria-label="Hexadustry Mini game canvas"></canvas>
@@ -20,6 +21,6 @@
       </section>
     </main>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>
