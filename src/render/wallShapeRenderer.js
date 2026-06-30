@@ -1,5 +1,5 @@
 import { axialToPixel, hexCorner, HEX_DIRECTIONS } from "../hex/hexMath.js";
-import { drawPath, rgba } from "./renderUtils.js";
+import { drawPath, getSpawnProgress, rgba } from "./renderUtils.js";
 
 const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 
@@ -166,14 +166,6 @@ function drawCoreHexShell(ctx, building, size, alpha = 1) {
   ctx.strokeStyle = `rgba(255, 236, 126, ${0.96 * alpha})`;
   ctx.lineWidth = 1.75;
   strokeSegments(ctx, innerSegments);
-}
-
-function getSpawnProgress(gameState) {
-  const spawn = gameState.playerSpawn;
-
-  if (!spawn?.active) return 1;
-
-  return Math.min(1, spawn.elapsed / spawn.duration);
 }
 
 function drawAssemblyLine(ctx, half, gameState) {
