@@ -18,6 +18,7 @@ Click izquierdo = dispara si no hay bloque seleccionado / coloca bloque seleccio
 Click izquierdo sostenido = arrastra y encola bloques sobre el rastro
 Click derecho = iniciar deconstruccion o deseleccionar bloque si no hay nada deconstruible
 R = rotar el bloque seleccionado cuando tenga rotaciones
+V = reaparecer en el nucleo construido
 ```
 
 ## Estado actual
@@ -44,6 +45,7 @@ La version actual contiene:
 - Proyectiles aereos como rayitas rapidas; impactan contra enemigos y atraviesan muros por pertenecer a capa aerea.
 - Menu inferior derecho de construccion con pestanas por categoria.
 - Tres bloques construibles de muro: chico, grande y enorme.
+- Bloque especial `NUCLEO` en apoyo, con huella de 7 hexes y respawn con `V`.
 - Recursos infinitos para pruebas de construccion.
 - Preview tenue del bloque seleccionado siguiendo el mouse.
 - Construcciones y deconstrucciones encoladas con siluetas translucidas.
@@ -77,6 +79,7 @@ src/
     canvasRenderer.js
   systems/
     constructionSystem.js
+    coreRespawnSystem.js
     enemyAiSystem.js
     groundEnemySystem.js
     movementSystem.js
@@ -120,6 +123,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `playerControlSystem`: lee input, rota visualmente hacia el objetivo, acelera la nave y emite particulas.
 - `playerTurretSystem`: rota la torreta montada hacia el mouse y dispara si se mantiene click izquierdo sin bloque seleccionado.
 - `projectileSystem`: envejece proyectiles, detecta impacto contra enemigos y elimina entidades destruidas.
+- `coreRespawnSystem`: mueve al jugador al centro visual del nucleo construido cuando se presiona `V`.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
@@ -158,13 +162,17 @@ La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. 
 
 Mientras haya una construccion o deconstruccion en cola, el modo construccion queda bloqueado. El menu no permite cambiar categoria ni bloque, el click derecho vacio no deselecciona, y `R` no rota la seleccion hasta que la cola se complete.
 
-## Muros construibles
+## Bloques construibles
 
 Hay tres muros construibles en la pestana `MUROS`:
 
 - `basicWall`: ocupa 1 hex y cuesta `8 copper`.
 - `largeWall`: ocupa 3 hexes unidos, cuesta `24 copper` y tiene 2 rotaciones alternables con `R`.
 - `hugeWall`: ocupa 7 hexes, un hex central completamente rodeado, y cuesta `56 copper` + `8 graphite`.
+
+Hay un bloque especial en la pestana `APOYO`:
+
+- `coreBlock`: `NUCLEO`, ocupa 7 hexes igual que el muro enorme, es solido, no cuesta recursos en prototipo y permite reaparecer con `V`.
 
 Todos los muros:
 
@@ -173,24 +181,26 @@ Todos los muros:
 - usan el color amarillo del jugador;
 - se renderizan como una figura construida, no como piedra natural.
 
+El nucleo usa la misma huella del muro enorme. Visualmente tiene un contorno exterior de muro completo y un cuadrado central de lado `1.2 * hexSize`.
+
 Los muros multi-hex reservan todos los tiles de su huella, pero el renderer solo dibuja el contorno exterior y no dibuja divisorias internas entre hexes.
 
 El muro grande mantiene una huella axial entera igual que los otros muros. Su unica diferencia de input es `snapMouseToFootprintCenter`: el mouse se interpreta desde el centro efectivo/interseccion de la pieza para calcular el hex ancla, pero la preview, la construccion y el muro construido usan la misma grilla final sin offsets visuales ni subgrillas.
 
 Flujo:
 
-1. Abrir la pestana `MUROS`.
-2. Seleccionar un muro.
+1. Abrir la pestana `MUROS` o `APOYO`.
+2. Seleccionar un bloque.
 3. Mover el mouse para ver la previa tenue.
-4. Rotar con `R` si el muro seleccionado lo permite.
+4. Rotar con `R` si el bloque seleccionado lo permite.
 5. Hacer click izquierdo sobre un hex libre o arrastrar con click izquierdo sostenido.
 6. Cada bloque valido del rastro entra como preview translucida en la cola de construccion.
 7. Desde ese momento el modo construccion queda bloqueado hasta que la cola termine.
 8. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
 9. La nave apunta al centro visual de la operacion que se esta construyendo o destruyendo.
-10. Al terminar una construccion, aparece el muro solido y empieza la siguiente operacion de la cola.
-11. Click derecho sobre cualquier hex ocupado por un muro construido encola deconstruccion.
-12. Al terminar la deconstruccion, el muro desaparece y devuelve sus materiales.
+10. Al terminar una construccion, aparece el bloque solido y empieza la siguiente operacion de la cola.
+11. Click derecho sobre cualquier hex ocupado por un bloque construido encola deconstruccion.
+12. Al terminar la deconstruccion, el bloque desaparece y devuelve sus materiales.
 
 ## Capas del mapa
 
