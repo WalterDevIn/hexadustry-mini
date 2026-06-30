@@ -160,47 +160,5 @@ export function createInitialWorld() {
 
   placeInitialCore(world, 0, 0);
 
-  placeBuilding(world, {
-    id: "drill-01",
-    type: "drill",
-    q: -2,
-    r: 1,
-    resourceType: "copper",
-    progress: 0,
-    solid: true,
-    constructed: false,
-  });
-
-  placeBuilding(world, {
-    id: "conveyor-01",
-    type: "conveyor",
-    q: -1,
-    r: 1,
-    direction: 0,
-    solid: false,
-    constructed: false,
-  });
-
-  placeBuilding(world, {
-    id: "conveyor-02",
-    type: "conveyor",
-    q: 0,
-    r: 1,
-    direction: 1,
-    solid: false,
-    constructed: false,
-  });
-
-  placeBuilding(world, {
-    id: "turret-01",
-    type: "turret",
-    q: 1,
-    r: -1,
-    range: 3,
-    reload: 0,
-    solid: true,
-    constructed: false,
-  });
-
   return world;
 }
