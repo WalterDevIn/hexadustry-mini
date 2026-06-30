@@ -8,6 +8,8 @@ export const MAP_LAYERS = {
 
 export const WORLD_HEX_SIZE = 22;
 
+const INFINITE_RESOURCE = Number.POSITIVE_INFINITY;
+
 function createTile(q, r) {
   return {
     q,
@@ -95,10 +97,11 @@ export function createInitialWorld() {
     },
     buildings: [],
     pendingConstructions: [],
+    pendingDeconstructions: [],
     resources: {
-      copper: 0,
-      lead: 0,
-      graphite: 0,
+      copper: INFINITE_RESOURCE,
+      lead: INFINITE_RESOURCE,
+      graphite: INFINITE_RESOURCE,
     },
   };
 
