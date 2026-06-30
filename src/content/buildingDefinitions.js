@@ -1,7 +1,19 @@
-const FREE_WALL_COST = {
-  copper: 0,
-  lead: 0,
-  graphite: 0,
+const WALL_COSTS = {
+  small: {
+    copper: 8,
+    lead: 0,
+    graphite: 0,
+  },
+  large: {
+    copper: 24,
+    lead: 0,
+    graphite: 0,
+  },
+  huge: {
+    copper: 56,
+    lead: 0,
+    graphite: 8,
+  },
 };
 
 export const BUILDING_DEFINITIONS = {
@@ -11,7 +23,7 @@ export const BUILDING_DEFINITIONS = {
     label: "MURO",
     category: "walls",
     layer: "surface",
-    cost: { ...FREE_WALL_COST },
+    cost: { ...WALL_COSTS.small },
     hp: 120,
     maxHp: 120,
     solid: true,
@@ -27,15 +39,27 @@ export const BUILDING_DEFINITIONS = {
     label: "MURO GRANDE",
     category: "walls",
     layer: "surface",
-    cost: { ...FREE_WALL_COST },
+    cost: { ...WALL_COSTS.large },
     hp: 360,
     maxHp: 360,
     solid: true,
-    directionMode: "none",
+    directionMode: "two-way",
     footprint: [
       { q: 0, r: 0 },
       { q: 1, r: 0 },
       { q: 1, r: -1 },
+    ],
+    footprintRotations: [
+      [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 1, r: -1 },
+      ],
+      [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 0, r: 1 },
+      ],
     ],
     buildComponentCount: 3,
     buildSecondsPerComponent: 0.18,
@@ -47,7 +71,7 @@ export const BUILDING_DEFINITIONS = {
     label: "MURO ENORME",
     category: "walls",
     layer: "surface",
-    cost: { ...FREE_WALL_COST },
+    cost: { ...WALL_COSTS.huge },
     hp: 840,
     maxHp: 840,
     solid: true,
@@ -85,6 +109,16 @@ export function getBuildTime(definition) {
   return Math.max(definition.minimumBuildSeconds, componentTime);
 }
 
-export function getBuildingFootprint(definition) {
+export function getBuildingFootprint(definition, rotationIndex = 0) {
+  const rotations = definition?.footprintRotations;
+
+  if (rotations?.length) {
+    return rotations[rotationIndex % rotations.length];
+  }
+
   return definition?.footprint ?? [{ q: 0, r: 0 }];
+}
+
+export function getBuildingRotationCount(definition) {
+  return definition?.footprintRotations?.length ?? 1;
 }
