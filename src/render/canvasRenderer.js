@@ -17,6 +17,18 @@ const PLAYER_YELLOW = {
   detail: "rgba(255, 236, 126, 0.88)",
 };
 
+const BUILD_ANIMATION_YELLOW = {
+  fill: [255, 226, 64],
+  stroke: [255, 226, 64],
+  detail: [255, 236, 126],
+};
+
+const BUILD_ANIMATION_RED = {
+  fill: [255, 64, 64],
+  stroke: [255, 64, 64],
+  detail: [255, 126, 126],
+};
+
 const ROCK_CLUSTER_FOOTPRINTS = {
   single: [{ q: 0, r: 0 }],
   largeA: [
@@ -58,6 +70,14 @@ function drawPath(ctx, points) {
   }
 
   ctx.closePath();
+}
+
+function rgba(color, alpha) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+}
+
+function easeOutCubic(t) {
+  return 1 - (1 - t) ** 3;
 }
 
 function drawGroundLayer(ctx, hex, tile, size, origin) {
@@ -226,6 +246,35 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
   ctx.strokeStyle = `rgba(255, 236, 126, ${0.96 * alpha})`;
   ctx.lineWidth = 1.75;
   strokeCornerSegments(ctx, innerSegments, 0.28);
+}
+
+function drawAnimatedWallShape(ctx, source, size, color, alpha, scale) {
+  const footprint = getWallFootprint(source);
+  const wallCenter = getWallCenter(footprint, size);
+  const outerSegments = getWallBoundarySegments(footprint, size);
+  const innerSegments = insetSegmentsToward(outerSegments, wallCenter, getInnerWallInset(size));
+
+  ctx.save();
+  ctx.translate(wallCenter.x, wallCenter.y);
+  ctx.scale(scale, scale);
+  ctx.translate(-wallCenter.x, -wallCenter.y);
+
+  ctx.fillStyle = rgba(color.fill, 0.16 * alpha);
+
+  for (const hex of footprint) {
+    drawPath(ctx, getWallCorners(hex, size));
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = rgba(color.stroke, 0.82 * alpha);
+  ctx.lineWidth = 2.1;
+  strokeSegments(ctx, outerSegments);
+
+  ctx.strokeStyle = rgba(color.detail, 0.64 * alpha);
+  ctx.lineWidth = 1.55;
+  strokeCornerSegments(ctx, innerSegments, 0.28);
+
+  ctx.restore();
 }
 
 function getRockClusterStyle(naturalBlockType, alpha) {
@@ -497,34 +546,22 @@ function drawBuilding(ctx, building, size, origin) {
 function drawPendingConstruction(ctx, construction, size, origin) {
   const center = axialToPixel(construction, size, origin);
   const progress = Math.min(1, construction.elapsed / construction.totalTime);
+  const scale = 0.16 + easeOutCubic(progress) * 0.84;
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.globalAlpha = 0.32 + progress * 0.34;
-  drawHexWallShape(ctx, construction, size, 0.7);
-
-  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = `rgba(255, 236, 126, ${0.72 + progress * 0.2})`;
-  ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
+  drawAnimatedWallShape(ctx, construction, size, BUILD_ANIMATION_YELLOW, 0.34, scale);
   ctx.restore();
 }
 
 function drawPendingDeconstruction(ctx, deconstruction, size, origin) {
   const center = axialToPixel(deconstruction, size, origin);
   const progress = Math.min(1, deconstruction.elapsed / deconstruction.totalTime);
+  const scale = Math.max(0.06, 1 - easeOutCubic(progress) * 0.94);
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.globalAlpha = 0.26 + (1 - progress) * 0.28;
-  drawHexWallShape(ctx, deconstruction, size, 0.7);
-
-  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = `rgba(255, 236, 126, ${0.84 - progress * 0.28})`;
-  ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
+  drawAnimatedWallShape(ctx, deconstruction, size, BUILD_ANIMATION_RED, 0.42, scale);
   ctx.restore();
 }
 
