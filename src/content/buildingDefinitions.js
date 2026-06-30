@@ -45,19 +45,19 @@ export const BUILDING_DEFINITIONS = {
     solid: true,
     directionMode: "two-way",
     footprint: [
+      { q: -1, r: 0 },
       { q: 0, r: 0 },
       { q: 1, r: 0 },
-      { q: 1, r: -1 },
     ],
     footprintRotations: [
       [
+        { q: -1, r: 0 },
         { q: 0, r: 0 },
         { q: 1, r: 0 },
-        { q: 1, r: -1 },
       ],
       [
+        { q: 0, r: -1 },
         { q: 0, r: 0 },
-        { q: 1, r: 0 },
         { q: 0, r: 1 },
       ],
     ],
