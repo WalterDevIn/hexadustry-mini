@@ -123,6 +123,17 @@ function getWallCenter(footprint, size) {
   };
 }
 
+function getPreviewOffset(definition, footprint, size) {
+  if (!definition.centerPreviewOnMouse) return { x: 0, y: 0 };
+
+  const center = getWallCenter(footprint, size);
+
+  return {
+    x: -center.x,
+    y: -center.y,
+  };
+}
+
 function insetPointToward(point, target, insetPixels) {
   const dx = target.x - point.x;
   const dy = target.y - point.y;
@@ -385,9 +396,10 @@ function drawBuildPreview(ctx, gameState, size, origin) {
 
   const footprint = getBuildingFootprint(definition, gameState.ui.buildMenu.rotationIndex);
   const center = axialToPixel(hoveredHex, size, origin);
+  const previewOffset = getPreviewOffset(definition, footprint, size);
 
   ctx.save();
-  ctx.translate(center.x, center.y);
+  ctx.translate(center.x + previewOffset.x, center.y + previewOffset.y);
   ctx.globalAlpha = 0.18;
   drawHexWallShape(ctx, { footprint }, size, 0.72);
   ctx.restore();
