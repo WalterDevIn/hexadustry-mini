@@ -1,5 +1,8 @@
 import { queryEntities } from "../ecs/createWorld.js";
-import { axialToPixel, buildHexPolygon } from "../hex/hexMath.js";
+import { axialToPixel, buildHexPolygon, generateVisibleHexes } from "../hex/hexMath.js";
+import { getTile } from "../world/createInitialWorld.js";
+
+const HEX_VISUAL_SCALE = 0.8;
 
 const ENTITY_GLYPHS = {
   core: "CORE",
@@ -23,7 +26,7 @@ function drawHex(ctx, hex, tile, size, origin) {
   const polygon = buildHexPolygon(hex, size, origin);
 
   drawPath(ctx, polygon.corners);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.24)";
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -162,11 +165,16 @@ function drawScanlines(ctx, width, height) {
   ctx.restore();
 }
 
+function getCameraTarget(gameState) {
+  const playerTransform = gameState.ecsWorld.components.transform.get(gameState.playerEntityId);
+
+  return playerTransform ?? { x: 0, y: 0 };
+}
+
 export function createCanvasRenderer(canvas, gameState) {
   const ctx = canvas.getContext("2d");
   const camera = {
     zoom: 1,
-    origin: { x: 0, y: 0 },
   };
 
   function resize() {
@@ -182,18 +190,28 @@ export function createCanvasRenderer(canvas, gameState) {
     const { mapWorld, ecsWorld } = gameState;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    const hexSize = Math.max(22, Math.min(width, height) / 22) * camera.zoom;
+    const baseHexSize = Math.max(22, Math.min(width, height) / 22);
+    const hexSize = baseHexSize * HEX_VISUAL_SCALE * camera.zoom;
+    const cameraTarget = getCameraTarget(gameState);
     const origin = {
-      x: width / 2 + camera.origin.x,
-      y: height / 2 + camera.origin.y,
+      x: width / 2 - cameraTarget.x,
+      y: height / 2 - cameraTarget.y,
     };
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "#020202";
     ctx.fillRect(0, 0, width, height);
 
-    for (const hex of mapWorld.hexes) {
-      const tile = mapWorld.tileMap.get(`${hex.q},${hex.r}`);
+    const visibleHexes = generateVisibleHexes({
+      cameraCenter: cameraTarget,
+      viewport: { width, height },
+      hexSize,
+      mapRadius: mapWorld.mapRadius,
+      padding: 4,
+    });
+
+    for (const hex of visibleHexes) {
+      const tile = getTile(mapWorld, hex.q, hex.r);
       drawHex(ctx, hex, tile, hexSize, origin);
     }
 
