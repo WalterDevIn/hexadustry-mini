@@ -23,17 +23,19 @@ La version actual contiene:
 - Fondo negro con lineas blancas y scanlines suaves.
 - Mapa hexagonal pointy-top con coordenadas axiales `q,r`.
 - Grilla virtual grande: el mapa tiene radio amplio, pero solo se dibujan los hexes visibles en camara.
+- Sistema de chunks para generar terreno bajo demanda.
 - Hexagonos al `0.8` del tamaño visual anterior.
 - Camara centrada en la nave del jugador.
 - Tres capas de mapa: suelo, terrestre y aerea.
 - Minerales en capa de suelo.
+- Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa y ECS.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks y ECS.
 
 ## Estructura tecnica minima
 
@@ -57,6 +59,7 @@ src/
     movementSystem.js
     playerControlSystem.js
   world/
+    chunkedCaveGeneration.js
     createInitialWorld.js
   styles.css
 ```
@@ -105,7 +108,8 @@ Capa terrestre. Contiene:
 - unidades terrestres;
 - bloques naturales;
 - bloques construidos;
-- edificios.
+- edificios;
+- muros naturales generados por chunks.
 
 ### `air`
 
@@ -122,6 +126,20 @@ ground -> surface -> air
 
 Eso permite que minerales queden debajo, edificios/bloques queden en superficie y naves voladoras queden por encima.
 
+## Chunks y cuevas
+
+`chunkedCaveGeneration.js` genera chunks de `16 x 16` hexagonos. Cada chunk se genera una sola vez y se marca en `generatedChunks`.
+
+La estructura busca una lectura similar a cuevas de Terraria:
+
+- paredes naturales agrupadas;
+- corredores abiertos irregulares;
+- bolsillos de aire;
+- variacion entre `cave-wall` y `dense-rock`;
+- zona segura alrededor del origen para no encerrar al jugador.
+
+El renderer calcula los hexagonos visibles, asegura los chunks cercanos con `ensureChunksForHexes` y luego dibuja la capa terrestre.
+
 ## Mapa y camara
 
 El mapa ya no se dibuja iterando una lista completa de hexagonos. `generateVisibleHexes` calcula los hexagonos que entran en la pantalla segun:
@@ -131,7 +149,7 @@ El mapa ya no se dibuja iterando una lista completa de hexagonos. `generateVisib
 - tamaño actual del hexagono;
 - radio maximo del mapa.
 
-El estado del mapa es sparse: `tileMap` solo guarda tiles especiales, como minerales, bloques naturales o edificios. Los tiles vacios se construyen temporalmente al renderizar.
+El estado del mapa es sparse: `tileMap` solo guarda tiles especiales, como minerales, bloques naturales, muros generados o edificios. Los tiles vacios se construyen temporalmente al renderizar.
 
 ## Convenciones iniciales
 
