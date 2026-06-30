@@ -23,7 +23,6 @@ const ENTITY_GLYPHS = {
   drill: "DRL",
   conveyor: ">>>",
   turret: "TRT",
-  wall: "WALL",
 };
 
 function drawPath(ctx, points) {
@@ -143,6 +142,15 @@ function insetSegmentsToward(segments, target, insetPixels) {
   }));
 }
 
+function strokeSegments(ctx, segments) {
+  for (const segment of segments) {
+    ctx.beginPath();
+    ctx.moveTo(segment.start.x, segment.start.y);
+    ctx.lineTo(segment.end.x, segment.end.y);
+    ctx.stroke();
+  }
+}
+
 function strokeCornerSegments(ctx, segments, cornerRatio) {
   for (const segment of segments) {
     const startPieceEnd = {
@@ -189,7 +197,7 @@ function drawHexWallShape(ctx, source, size, alpha = 1) {
 
   ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
   ctx.lineWidth = 2.25;
-  strokeCornerSegments(ctx, outerSegments, 0.28);
+  strokeSegments(ctx, outerSegments);
 
   ctx.strokeStyle = `rgba(255, 236, 126, ${0.96 * alpha})`;
   ctx.lineWidth = 1.75;
@@ -318,11 +326,13 @@ function drawBuilding(ctx, building, size, origin) {
     drawHexWallShape(ctx, building, size, 1);
   }
 
-  ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = building.type === "wall" ? PLAYER_YELLOW.detail : "rgba(255, 255, 255, 0.95)";
-  ctx.fillText(ENTITY_GLYPHS[building.type] ?? "???", 0, radius + size * 0.22);
+  if (building.type !== "wall") {
+    ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.fillText(ENTITY_GLYPHS[building.type] ?? "???", 0, radius + size * 0.22);
+  }
 
   ctx.restore();
 }
