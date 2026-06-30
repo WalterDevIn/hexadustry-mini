@@ -35,8 +35,10 @@ La version actual contiene:
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
-- Jugador con apuntado instantaneo al mouse, salvo mientras construye.
+- Jugador con rotacion visual suave hacia el mouse o hacia la construccion activa.
 - Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
+- Jugador como triangulo equilatero amarillo de diametro visual igual al 80% de un hex.
+- Particulas de escape detras del jugador al moverse, con mayor emision a mayor velocidad.
 - Menu inferior derecho de construccion con pestanas por categoria.
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Recursos infinitos para pruebas de construccion.
@@ -44,7 +46,6 @@ La version actual contiene:
 - Construccion diferida con preview translucido.
 - Deconstruccion diferida con click derecho.
 - ECS minimo.
-- Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
 Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primeros muros construibles y ECS.
@@ -106,7 +107,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 
 ### Sistemas actuales
 
-- `playerControlSystem`: lee input, apunta al mouse/construccion y acelera la nave del jugador.
+- `playerControlSystem`: lee input, rota visualmente hacia el objetivo, acelera la nave y emite particulas.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
@@ -115,11 +116,15 @@ Las entidades son solo IDs numericos. No contienen logica.
 
 ## Jugador
 
-El jugador apunta instantaneamente al mouse. La rotacion visual no depende de la direccion de movimiento.
+El jugador rota suavemente hacia el mouse. La rotacion visual no depende de la direccion de movimiento.
 
-Mientras una construccion esta en curso, el jugador bloquea el apuntado hacia el hex donde empezo esa construccion. Cuando la construccion termina, vuelve a apuntar al mouse.
+Mientras una construccion esta en curso, el jugador rota hacia el hex donde empezo esa construccion. Cuando la construccion termina, vuelve a rotar hacia el mouse, sin salto instantaneo.
+
+El jugador es un triangulo equilatero amarillo. Su diametro visual es igual al 80% de un hexagono.
 
 El movimiento es vectorial: se puede acelerar en cualquier direccion usando WASD o flechas. La nave tiene inercia, tarda un poco en frenar y su velocidad maxima sube progresivamente hasta 2x despues de 3 segundos continuos de movimiento.
+
+Cuando se mueve, la parte trasera de la nave emite particulas. La emision y el tamaño de las particulas aumentan con la velocidad actual.
 
 ## Menu de construccion
 
