@@ -4,7 +4,7 @@ const SAFE_CLEAR_RADIUS = 7;
 const ORES = [
   { type: "copper", amount: 800, colorId: "orange", seedOffset: 101, chance: 0.018 },
   { type: "lead", amount: 650, colorId: "blue-gray", seedOffset: 211, chance: 0.012 },
-  { type: "coal", amount: 520, colorId: "gray", seedOffset: 307, chance: 0.014 },
+  { type: "carbon", amount: 520, colorId: "gray", seedOffset: 307, chance: 0.014 },
 ];
 
 function fract(value) {
