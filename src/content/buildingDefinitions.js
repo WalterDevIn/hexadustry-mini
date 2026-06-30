@@ -2,17 +2,17 @@ const WALL_COSTS = {
   small: {
     copper: 8,
     lead: 0,
-    graphite: 0,
+    carbon: 0,
   },
   large: {
     copper: 24,
     lead: 0,
-    graphite: 0,
+    carbon: 0,
   },
   huge: {
     copper: 56,
     lead: 0,
-    graphite: 8,
+    carbon: 8,
   },
 };
 
@@ -101,7 +101,7 @@ export const BUILDING_DEFINITIONS = {
     cost: {
       copper: 36,
       lead: 0,
-      graphite: 0,
+      carbon: 0,
     },
     hp: 300,
     maxHp: 300,
@@ -110,11 +110,34 @@ export const BUILDING_DEFINITIONS = {
     snapMouseToFootprintCenter: true,
     footprint: LARGE_TRIANGLE_FOOTPRINT,
     footprintRotations: LARGE_TRIANGLE_ROTATIONS,
-    drillRate: 1,
+    drillSecondsPerMineralPerHex: 2,
     storageCapacity: 10,
     buildComponentCount: 3,
     buildSecondsPerComponent: 0.22,
     minimumBuildSeconds: 0.55,
+  },
+  transportBelt: {
+    id: "transportBelt",
+    type: "conveyor",
+    label: "ESTERA",
+    category: "transporters",
+    layer: "surface",
+    cost: {
+      copper: 1,
+      lead: 0,
+      carbon: 0,
+    },
+    hp: 80,
+    maxHp: 80,
+    solid: false,
+    directionMode: "six-way",
+    directionCount: 6,
+    footprint: [{ q: 0, r: 0 }],
+    transferSeconds: 0.33,
+    storageCapacity: 1,
+    buildComponentCount: 1,
+    buildSecondsPerComponent: 0.08,
+    minimumBuildSeconds: 0.12,
   },
   coreBlock: {
     id: "coreBlock",
@@ -125,7 +148,7 @@ export const BUILDING_DEFINITIONS = {
     cost: {
       copper: 0,
       lead: 0,
-      graphite: 0,
+      carbon: 0,
     },
     hp: 1600,
     maxHp: 1600,
@@ -167,5 +190,5 @@ export function getBuildingFootprint(definition, rotationIndex = 0) {
 }
 
 export function getBuildingRotationCount(definition) {
-  return definition?.footprintRotations?.length ?? 1;
+  return definition?.directionCount ?? definition?.footprintRotations?.length ?? 1;
 }
