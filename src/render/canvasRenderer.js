@@ -1,6 +1,6 @@
 import { queryEntities } from "../ecs/createWorld.js";
 import { axialToPixel, buildHexPolygon, generateVisibleHexes } from "../hex/hexMath.js";
-import { getTile } from "../world/createInitialWorld.js";
+import { getTile, MAP_LAYERS } from "../world/createInitialWorld.js";
 
 const HEX_VISUAL_SCALE = 0.8;
 
@@ -22,15 +22,16 @@ function drawPath(ctx, points) {
   ctx.closePath();
 }
 
-function drawHex(ctx, hex, tile, size, origin) {
+function drawGroundLayer(ctx, hex, tile, size, origin) {
   const polygon = buildHexPolygon(hex, size, origin);
+  const groundLayer = tile.layers.ground;
 
   drawPath(ctx, polygon.corners);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.24)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  if (tile?.ore) {
+  if (groundLayer.ore) {
     ctx.beginPath();
     ctx.arc(polygon.center.x, polygon.center.y, size * 0.16, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
@@ -43,6 +44,28 @@ function drawHex(ctx, hex, tile, size, origin) {
     ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     ctx.fillText("ORE", polygon.center.x, polygon.center.y + size * 0.36);
   }
+}
+
+function drawSurfaceLayer(ctx, hex, tile, size, origin) {
+  const surfaceLayer = tile.layers.surface;
+
+  if (!surfaceLayer.naturalBlock) return;
+
+  const center = axialToPixel(hex, size, origin);
+  const radius = size * 0.34;
+
+  ctx.save();
+  ctx.translate(center.x, center.y);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
+
+  ctx.font = `${Math.floor(size * 0.2)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.fillText(surfaceLayer.naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
+  ctx.restore();
 }
 
 function drawBuilding(ctx, building, size, origin) {
@@ -150,6 +173,18 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.restore();
 }
 
+function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin) {
+  const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable", "mapLayer"]);
+
+  for (const entityId of triangleEntities) {
+    const mapLayer = ecsWorld.components.mapLayer.get(entityId);
+
+    if (mapLayer.id === layerId) {
+      drawTriangleEntity(ctx, entityId, ecsWorld, origin);
+    }
+  }
+}
+
 function drawScanlines(ctx, width, height) {
   ctx.save();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
@@ -212,18 +247,20 @@ export function createCanvasRenderer(canvas, gameState) {
 
     for (const hex of visibleHexes) {
       const tile = getTile(mapWorld, hex.q, hex.r);
-      drawHex(ctx, hex, tile, hexSize, origin);
+      drawGroundLayer(ctx, hex, tile, hexSize, origin);
+    }
+
+    for (const hex of visibleHexes) {
+      const tile = getTile(mapWorld, hex.q, hex.r);
+      drawSurfaceLayer(ctx, hex, tile, hexSize, origin);
     }
 
     for (const building of mapWorld.buildings) {
       drawBuilding(ctx, building, hexSize, origin);
     }
 
-    const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable"]);
-
-    for (const entityId of triangleEntities) {
-      drawTriangleEntity(ctx, entityId, ecsWorld, origin);
-    }
+    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.surface, origin);
+    drawEntitiesOnLayer(ctx, ecsWorld, MAP_LAYERS.air, origin);
 
     drawScanlines(ctx, width, height);
   }
