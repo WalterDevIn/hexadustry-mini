@@ -1,20 +1,99 @@
 import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
 import { axialToPixel } from "../hex/hexMath.js";
 import { easeOutCubic } from "./renderUtils.js";
+import { getOreColor } from "./terrainRenderer.js";
 import {
   drawAnimatedWallShape,
   drawCoreShape,
   drawHexWallShape,
   drawQueuedBuildPreviewShape,
+  getWallBoundarySegments,
+  getWallCenter,
+  strokeSegments,
 } from "./wallShapeRenderer.js";
 
 const BUILD_ANIMATION_YELLOW = [255, 226, 64];
 const BUILD_ANIMATION_RED = [255, 64, 64];
 const ENTITY_GLYPHS = {
-  drill: "DRL",
   conveyor: ">>>",
   turret: "TRT",
 };
+
+function drawTriangleBlade(ctx, distance, length, width) {
+  ctx.beginPath();
+  ctx.moveTo(distance + length, 0);
+  ctx.lineTo(distance - length * 0.45, -width * 0.5);
+  ctx.lineTo(distance - length * 0.45, width * 0.5);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function getDrillOre(mapWorld, building) {
+  const oreType = building.drill?.extractedType;
+
+  if (!oreType) return null;
+
+  return { type: oreType };
+}
+
+function drawOuterFootprintOnly(ctx, building, size) {
+  const footprint = building.footprint ?? [{ q: 0, r: 0 }];
+  const outerSegments = getWallBoundarySegments(footprint, size);
+
+  ctx.strokeStyle = "rgba(255, 226, 64, 0.96)";
+  ctx.lineWidth = 2.25;
+  strokeSegments(ctx, outerSegments);
+}
+
+function drawCommonDrill(ctx, building, size, gameState) {
+  const center = getWallCenter(building.footprint ?? [{ q: 0, r: 0 }], size);
+  const playerRadius = size * 0.4;
+  const innerRadius = playerRadius * 0.5;
+  const bladeDistance = innerRadius + size * 0.2;
+  const bladeLength = size * 0.21;
+  const bladeWidth = size * 0.18;
+  const outerRadius = bladeDistance + bladeLength * 0.78;
+  const drill = building.drill;
+  const ore = getDrillOre(gameState.mapWorld, building);
+  const oreColor = ore ? getOreColor(ore) : "rgba(255, 255, 255, 0.24)";
+  const bladeRotation = drill?.bladeRotation ?? 0;
+
+  drawOuterFootprintOnly(ctx, building, size);
+
+  ctx.save();
+  ctx.translate(center.x, center.y);
+  ctx.fillStyle = oreColor;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, innerRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.rotate(bladeRotation);
+  ctx.strokeStyle = drill?.isDrilling ? "rgba(255, 236, 126, 0.96)" : "rgba(255, 255, 255, 0.48)";
+  ctx.lineWidth = 1.8;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.save();
+    ctx.rotate((Math.PI * 2 * i) / 3);
+    drawTriangleBlade(ctx, bladeDistance, bladeLength, bladeWidth);
+    ctx.restore();
+  }
+
+  ctx.rotate(-bladeRotation);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.font = `${Math.floor(size * 0.2)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+  ctx.fillText(`${drill?.storedAmount ?? 0}/${drill?.capacity ?? 10}`, 0, outerRadius + size * 0.23);
+  ctx.restore();
+}
 
 export function drawBuilding(ctx, building, size, origin, gameState) {
   const center = axialToPixel(building, size, origin);
@@ -34,9 +113,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
   if (building.type === "core") {
     drawCoreShape(ctx, building, size, gameState, 1);
   } else if (building.type === "drill") {
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
+    drawCommonDrill(ctx, building, size, gameState);
   } else if (building.type === "conveyor") {
     ctx.beginPath();
     ctx.moveTo(-radius, -radius * 0.45);
@@ -56,7 +133,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
     drawHexWallShape(ctx, building, size, 1);
   }
 
-  if (building.type !== "wall" && building.type !== "core") {
+  if (building.type !== "wall" && building.type !== "core" && building.type !== "drill") {
     ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
