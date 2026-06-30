@@ -1,5 +1,6 @@
 import { queryEntities } from "../ecs/createWorld.js";
 import { axialToPixel, buildHexPolygon, generateVisibleHexes } from "../hex/hexMath.js";
+import { ensureChunksForHexes } from "../world/chunkedCaveGeneration.js";
 import { getTile, MAP_LAYERS } from "../world/createInitialWorld.js";
 
 const HEX_VISUAL_SCALE = 0.8;
@@ -46,6 +47,34 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
   }
 }
 
+function drawCaveWall(ctx, naturalBlock, size) {
+  const radius = size * 0.42;
+  const inset = naturalBlock.type === "dense-rock" ? 0 : size * 0.08;
+
+  ctx.strokeStyle = naturalBlock.type === "dense-rock"
+    ? "rgba(255, 255, 255, 0.82)"
+    : "rgba(255, 255, 255, 0.62)";
+  ctx.lineWidth = naturalBlock.type === "dense-rock" ? 2 : 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(-radius + inset, -radius * 0.35);
+  ctx.lineTo(-radius * 0.35, -radius + inset);
+  ctx.lineTo(radius * 0.45, -radius * 0.78);
+  ctx.lineTo(radius - inset, -radius * 0.12);
+  ctx.lineTo(radius * 0.58, radius * 0.72);
+  ctx.lineTo(-radius * 0.5, radius - inset);
+  ctx.lineTo(-radius + inset, radius * 0.28);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.38, -radius * 0.18);
+  ctx.lineTo(radius * 0.24, -radius * 0.42);
+  ctx.moveTo(-radius * 0.1, radius * 0.34);
+  ctx.lineTo(radius * 0.46, radius * 0.08);
+  ctx.stroke();
+}
+
 function drawSurfaceLayer(ctx, hex, tile, size, origin) {
   const surfaceLayer = tile.layers.surface;
 
@@ -53,18 +82,26 @@ function drawSurfaceLayer(ctx, hex, tile, size, origin) {
 
   const center = axialToPixel(hex, size, origin);
   const radius = size * 0.34;
+  const naturalBlock = surfaceLayer.naturalBlock;
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
 
-  ctx.font = `${Math.floor(size * 0.2)}px Courier New`;
+  if (naturalBlock.generated) {
+    drawCaveWall(ctx, naturalBlock, size);
+  } else {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-radius, -radius, radius * 2, radius * 2);
+  }
+
+  ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
-  ctx.fillText(surfaceLayer.naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
+  ctx.fillStyle = naturalBlock.generated
+    ? "rgba(255, 255, 255, 0.5)"
+    : "rgba(255, 255, 255, 0.72)";
+  ctx.fillText(naturalBlock.type.toUpperCase().slice(0, 3), 0, radius + size * 0.22);
   ctx.restore();
 }
 
@@ -244,6 +281,8 @@ export function createCanvasRenderer(canvas, gameState) {
       mapRadius: mapWorld.mapRadius,
       padding: 4,
     });
+
+    ensureChunksForHexes(mapWorld, visibleHexes);
 
     for (const hex of visibleHexes) {
       const tile = getTile(mapWorld, hex.q, hex.r);
