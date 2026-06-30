@@ -1,5 +1,5 @@
 import { queryEntities } from "../ecs/createWorld.js";
-import { axialToPixel, buildHexPolygon, generateVisibleHexes, hexCorner } from "../hex/hexMath.js";
+import { axialToPixel, buildHexPolygon, generateVisibleHexes, hexCorner, HEX_DIRECTIONS } from "../hex/hexMath.js";
 import { ensureChunksForHexes } from "../world/chunkedCaveGeneration.js";
 import { getTile, MAP_LAYERS } from "../world/createInitialWorld.js";
 
@@ -59,6 +59,25 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
   }
 }
 
+function makeRelativeKey(q, r) {
+  return `${q},${r}`;
+}
+
+function getWallFootprint(source) {
+  return source.footprint ?? [{ q: 0, r: 0 }];
+}
+
+function getWallCorners(relativeHex, size, radiusScale) {
+  const center = axialToPixel(relativeHex, size);
+  const corners = [];
+
+  for (let i = 0; i < 6; i += 1) {
+    corners.push(hexCorner(center, size * radiusScale, i));
+  }
+
+  return corners;
+}
+
 function drawCornerHexFrame(ctx, corners, segmentRatio) {
   for (let i = 0; i < corners.length; i += 1) {
     const previous = corners[(i + corners.length - 1) % corners.length];
@@ -81,26 +100,76 @@ function drawCornerHexFrame(ctx, corners, segmentRatio) {
   }
 }
 
-function drawHexWallShape(ctx, size, alpha = 1) {
-  const outerCorners = [];
-  const innerCorners = [];
+function drawWallExterior(ctx, footprint, size, alpha) {
+  const footprintKeys = new Set(footprint.map((hex) => makeRelativeKey(hex.q, hex.r)));
 
-  for (let i = 0; i < 6; i += 1) {
-    outerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.82, i));
-    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.66, i));
+  ctx.fillStyle = `rgba(255, 226, 64, ${0.04 * alpha})`;
+
+  for (const hex of footprint) {
+    drawPath(ctx, getWallCorners(hex, size, 1));
+    ctx.fill();
   }
-
-  ctx.fillStyle = `rgba(255, 226, 64, ${0.05 * alpha})`;
-  drawPath(ctx, outerCorners);
-  ctx.fill();
 
   ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
   ctx.lineWidth = 2.2;
-  drawCornerHexFrame(ctx, outerCorners, 0.26);
 
-  ctx.strokeStyle = `rgba(255, 236, 126, ${0.74 * alpha})`;
+  for (const hex of footprint) {
+    const corners = getWallCorners(hex, size, 1);
+
+    for (let directionIndex = 0; directionIndex < HEX_DIRECTIONS.length; directionIndex += 1) {
+      const direction = HEX_DIRECTIONS[directionIndex];
+      const neighborKey = makeRelativeKey(hex.q + direction.q, hex.r + direction.r);
+
+      if (footprintKeys.has(neighborKey)) continue;
+
+      const start = corners[directionIndex];
+      const end = corners[(directionIndex + 1) % corners.length];
+
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawSingleWallInnerFrame(ctx, size, alpha) {
+  const innerCorners = [];
+
+  for (let i = 0; i < 6; i += 1) {
+    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.56, i));
+  }
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.76 * alpha})`;
+  ctx.lineWidth = 1.5;
+  drawCornerHexFrame(ctx, innerCorners, 0.24);
+}
+
+function drawLargeWallDetail(ctx, footprint, size, alpha) {
+  if (footprint.length <= 1) {
+    drawSingleWallInnerFrame(ctx, size, alpha);
+    return;
+  }
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.58 * alpha})`;
   ctx.lineWidth = 1.4;
-  drawCornerHexFrame(ctx, innerCorners, 0.22);
+
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.34, -size * 0.16);
+  ctx.lineTo(size * 0.42, -size * 0.34);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(size * 0.06, size * 0.46);
+  ctx.lineTo(size * 0.84, size * 0.18);
+  ctx.stroke();
+}
+
+function drawHexWallShape(ctx, source, size, alpha = 1) {
+  const footprint = getWallFootprint(source);
+
+  drawWallExterior(ctx, footprint, size, alpha);
+  drawLargeWallDetail(ctx, footprint, size, alpha);
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
@@ -222,7 +291,7 @@ function drawBuilding(ctx, building, size, origin) {
     ctx.lineTo(radius * 1.05, -radius * 0.25);
     ctx.stroke();
   } else if (building.type === "wall") {
-    drawHexWallShape(ctx, size, 1);
+    drawHexWallShape(ctx, building, size, 1);
   }
 
   ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
@@ -241,7 +310,7 @@ function drawPendingConstruction(ctx, construction, size, origin) {
   ctx.save();
   ctx.translate(center.x, center.y);
   ctx.globalAlpha = 0.32 + progress * 0.34;
-  drawHexWallShape(ctx, size, 0.7);
+  drawHexWallShape(ctx, construction, size, 0.7);
 
   ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
   ctx.textAlign = "center";
