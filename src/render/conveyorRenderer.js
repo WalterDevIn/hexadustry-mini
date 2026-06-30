@@ -24,14 +24,19 @@ function getBuildingAt(mapWorld, q, r) {
   return mapWorld.buildings.find((building) => building.id === buildingId) ?? null;
 }
 
-function canVisuallyConnect(building) {
-  if (!building) return false;
-  if (building.type === "conveyor") return true;
-  if (building.type === "core") return true;
-  if (building.type === "drill") return true;
-  if (building.drill || building.conveyor || building.storage) return true;
+function conveyorOutputsTo(neighbor, target) {
+  const direction = HEX_DIRECTIONS[(neighbor.direction ?? 0) % DIRECTION_COUNT];
 
-  return false;
+  return neighbor.q + direction.q === target.q && neighbor.r + direction.r === target.r;
+}
+
+function canFeedThisConveyor(neighbor, target) {
+  if (!neighbor) return false;
+  if (neighbor.type === "conveyor") return conveyorOutputsTo(neighbor, target);
+  if (neighbor.type === "drill") return true;
+  if (neighbor.type === "core") return false;
+
+  return Boolean(neighbor.storage || neighbor.drill);
 }
 
 function toLocalSide(worldSide, outputSide) {
@@ -55,9 +60,17 @@ function getConnectedInputSides(mapWorld, building) {
     const direction = HEX_DIRECTIONS[worldSide];
     const neighbor = getBuildingAt(mapWorld, building.q + direction.q, building.r + direction.r);
 
-    if (canVisuallyConnect(neighbor)) {
+    if (canFeedThisConveyor(neighbor, building)) {
       localSides.push(toLocalSide(worldSide, outputSide));
     }
+  }
+
+  const entryDirection = building.conveyor?.item?.entryDirection;
+
+  if (typeof entryDirection === "number" && entryDirection !== outputSide) {
+    const itemLocalSide = toLocalSide(entryDirection, outputSide);
+
+    if (!localSides.includes(itemLocalSide)) localSides.push(itemLocalSide);
   }
 
   if (localSides.length === 0) return [3];
