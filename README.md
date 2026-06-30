@@ -9,9 +9,15 @@ npm install
 npm run dev
 ```
 
+Controles actuales:
+
+```txt
+WASD / Flechas = mover nave del jugador
+```
+
 ## Estado actual
 
-La primera version contiene:
+La version actual contiene:
 
 - Canvas fullscreen.
 - Fondo negro con lineas blancas y scanlines suaves.
@@ -21,9 +27,11 @@ La primera version contiene:
 - Extractor.
 - Transportadores visuales.
 - Torreta visual.
-- Enemigo visual.
+- ECS minimo.
+- Jugador como nave triangular.
+- Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva ni combate real. Esta version solo fija la base visual, geometrica y estructural.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica y ECS.
 
 ## Estructura tecnica minima
 
@@ -32,52 +40,58 @@ src/
   main.js
   app/
     createGame.js
+  ecs/
+    createWorld.js
+  game/
+    createInitialGameState.js
   hex/
     hexMath.js
-  world/
-    createInitialWorld.js
+  input/
+    keyboardInput.js
   render/
     canvasRenderer.js
+  systems/
+    enemyAiSystem.js
+    movementSystem.js
+    playerControlSystem.js
+  world/
+    createInitialWorld.js
   styles.css
 ```
 
-### `hex/`
+## ECS actual
 
-Responsable de toda la matematica hexagonal. Aca deben vivir:
+El ECS separa entidades, componentes y sistemas.
 
-- conversion axial `q,r` a pixel;
-- vecinos hexagonales;
-- distancia hexagonal;
-- seleccion de celda desde mouse;
-- pathfinding sobre la grilla.
+### Entidades
 
-Regla: ningun sistema de gameplay deberia recalcular geometria hexagonal por su cuenta.
+Las entidades son solo IDs numericos. No contienen logica.
 
-### `world/`
+### Componentes actuales
 
-Responsable del estado del mapa y entidades de gameplay. Aca deben vivir:
+- `transform`: posicion `x,y` y rotacion.
+- `velocity`: velocidad y velocidad maxima.
+- `playerControlled`: marca y parametros de control del jugador.
+- `enemyAi`: comportamiento basico de enemigo.
+- `team`: faccion o bando.
+- `triangleRenderable`: dibujo de nave triangular.
+- `health`: vida actual y maxima.
 
-- tiles;
-- minerales;
-- edificios;
-- enemigos;
-- recursos globales;
-- creacion de mapas iniciales;
-- carga/guardado futuro.
+### Sistemas actuales
 
-### `render/`
+- `playerControlSystem`: lee input y acelera la nave del jugador.
+- `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
+- `movementSystem`: aplica velocidad sobre transform.
+- `canvasRenderer`: no decide gameplay; solo dibuja mapa y entidades renderizables.
 
-Responsable de dibujar. No deberia decidir reglas. Solo recibe estado y lo representa.
+## Convenciones iniciales
 
-### `app/`
-
-Responsable de coordinar el juego:
-
-- crear mundo;
-- crear renderer;
-- ejecutar loop;
-- conectar input;
-- llamar sistemas.
+- Coordenadas del mapa: axial `q,r`.
+- Hexes: pointy-top.
+- Coordenadas de naves: espacio de mundo 2D centrado sobre el canvas.
+- Estetica base: blanco/negro, sin colores fuertes hasta que sean necesarios por lectura.
+- Renderer: canvas 2D.
+- Gameplay: data simple + sistemas separados.
 
 ## Roadmap de version minima jugable
 
@@ -108,20 +122,12 @@ Responsable de coordinar el juego:
 
 ### 5. Torreta
 
-- Busca enemigo en rango hexagonal.
+- Busca enemigo en rango hexagonal o rango 2D.
 - Consume recurso o dispara gratis en prototipo.
 - Baja HP del enemigo.
 
 ### 6. Enemigo
 
 - Spawnea en borde del mapa.
-- Busca camino hacia el nucleo.
-- Ataca el nucleo o edificios que bloqueen.
-
-## Convenciones iniciales
-
-- Coordenadas: axial `q,r`.
-- Hexes: pointy-top.
-- Estetica base: blanco/negro, sin colores fuertes hasta que sean necesarios por lectura.
-- Renderer: canvas 2D.
-- Gameplay: primero data simple, despues sistemas separados.
+- Busca camino hacia el nucleo o persigue al jugador, segun modo.
+- Ataca el nucleo, edificios o jugador.
