@@ -1,6 +1,6 @@
 import { pixelToAxial, roundAxial } from "../hex/hexMath.js";
 import { getBuildingDefinition, getBuildingFootprint, getBuildingRotationCount } from "../content/buildingDefinitions.js";
-import { requestBuildAt, requestDeconstructAt } from "../systems/constructionSystem.js";
+import { isConstructionModeLocked, requestBuildAt, requestDeconstructAt } from "../systems/constructionSystem.js";
 
 function getCameraTarget(gameState) {
   return gameState.ecsWorld.components.transform.get(gameState.playerEntityId) ?? { x: 0, y: 0 };
@@ -78,6 +78,8 @@ function updateHoveredHexFromPointer(gameState) {
 }
 
 function cycleSelectedBlockRotation(gameState) {
+  if (isConstructionModeLocked(gameState)) return;
+
   const definition = getSelectedBuildDefinition(gameState);
   const rotationCount = getBuildingRotationCount(definition);
 
@@ -88,6 +90,8 @@ function cycleSelectedBlockRotation(gameState) {
 }
 
 function clearSelectedBuildBlock(gameState) {
+  if (isConstructionModeLocked(gameState)) return;
+
   gameState.ui.buildMenu.selectedBlockId = null;
   gameState.ui.buildMenu.rotationIndex = 0;
   gameState.ui.buildMenu.hoveredHex = null;
