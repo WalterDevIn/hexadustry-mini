@@ -3,6 +3,7 @@ import { getOreColor } from "./terrainRenderer.js";
 
 const EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 const DIRECTION_COUNT = HEX_DIRECTIONS.length;
+const INNER_SCALE = 0.82;
 
 function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % DIRECTION_COUNT];
@@ -10,8 +11,6 @@ function getDirectionVector(directionIndex, size) {
   const length = Math.hypot(end.x, end.y) || 1;
 
   return {
-    x: end.x / length,
-    y: end.y / length,
     angle: Math.atan2(end.y, end.x),
   };
 }
@@ -60,9 +59,7 @@ function getConnectedInputSides(mapWorld, building) {
     const direction = HEX_DIRECTIONS[worldSide];
     const neighbor = getBuildingAt(mapWorld, building.q + direction.q, building.r + direction.r);
 
-    if (canFeedThisConveyor(neighbor, building)) {
-      localSides.push(toLocalSide(worldSide, outputSide));
-    }
+    if (canFeedThisConveyor(neighbor, building)) localSides.push(toLocalSide(worldSide, outputSide));
   }
 
   const entryDirection = building.conveyor?.item?.entryDirection;
@@ -78,8 +75,15 @@ function getConnectedInputSides(mapWorld, building) {
   return localSides.sort((a, b) => a - b);
 }
 
-function getHexCorners(size) {
+function getOuterCorners(size) {
   return buildHexPolygon({ q: 0, r: 0 }, size, { x: 0, y: 0 }).corners;
+}
+
+function getInnerCorners(size) {
+  return getOuterCorners(size).map((corner) => ({
+    x: corner.x * INNER_SCALE,
+    y: corner.y * INNER_SCALE,
+  }));
 }
 
 function getSideEdge(corners, sideIndex) {
@@ -104,7 +108,7 @@ function sameEdge(edgeA, edgeB) {
     || (samePoint(edgeA.a, edgeB.b) && samePoint(edgeA.b, edgeB.a));
 }
 
-function drawOuterHexWithoutEdges(ctx, corners, removedEdges, alpha) {
+function drawEdges(ctx, corners, alpha, removedEdges = []) {
   ctx.save();
   ctx.strokeStyle = `rgba(255, 255, 255, ${0.68 * alpha})`;
   ctx.lineWidth = 1.5;
@@ -169,11 +173,8 @@ function groupContiguousSides(localInputSides) {
     const lastGroup = groups[groups.length - 1];
     const previousSide = lastGroup?.[lastGroup.length - 1];
 
-    if (lastGroup && side === previousSide + 1) {
-      lastGroup.push(side);
-    } else {
-      groups.push([side]);
-    }
+    if (lastGroup && side === previousSide + 1) lastGroup.push(side);
+    else groups.push([side]);
   }
 
   return groups;
@@ -198,9 +199,7 @@ function getOpenEdgeForSideGroup(corners, sideGroup) {
     .filter(([, count]) => count === 1)
     .map(([key]) => pointByKey.get(key));
 
-  if (endpoints.length >= 2) {
-    return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
-  }
+  if (endpoints.length >= 2) return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
 
   return getSideEdge(corners, sideGroup[0]);
 }
@@ -213,16 +212,16 @@ function getSegmentPoint(start, end, t) {
 }
 
 function getMiddleRoute(inputEdge, outputEdge) {
-  const start = {
-    x: (inputEdge.a.x + inputEdge.b.x) / 2,
-    y: (inputEdge.a.y + inputEdge.b.y) / 2,
+  return {
+    start: {
+      x: (inputEdge.a.x + inputEdge.b.x) / 2,
+      y: (inputEdge.a.y + inputEdge.b.y) / 2,
+    },
+    end: {
+      x: (outputEdge.a.x + outputEdge.b.x) / 2,
+      y: (outputEdge.a.y + outputEdge.b.y) / 2,
+    },
   };
-  const end = {
-    x: (outputEdge.a.x + outputEdge.b.x) / 2,
-    y: (outputEdge.a.y + outputEdge.b.y) / 2,
-  };
-
-  return { start, end };
 }
 
 function drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha) {
@@ -254,20 +253,22 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   const direction = getDirectionVector(outputSide, size);
   const localInputSides = getConnectedInputSides(mapWorld, building);
   const sideGroups = groupContiguousSides(localInputSides);
-  const corners = getHexCorners(size);
-  const outputEdge = getSideEdge(corners, 0);
-  const inputEdges = localInputSides.map((localSide) => getSideEdge(corners, localSide));
-  const removedEdges = [outputEdge, ...inputEdges];
+  const outerCorners = getOuterCorners(size);
+  const innerCorners = getInnerCorners(size);
+  const outputEdge = getSideEdge(innerCorners, 0);
+  const inputEdges = localInputSides.map((localSide) => getSideEdge(innerCorners, localSide));
+  const removedInnerEdges = [outputEdge, ...inputEdges];
   const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => {
     return [toWorldSide(localSide, outputSide), inputEdges[index]];
   }));
 
   ctx.save();
   ctx.rotate(direction.angle);
-  drawOuterHexWithoutEdges(ctx, corners, removedEdges, alpha);
+  drawEdges(ctx, outerCorners, alpha);
+  drawEdges(ctx, innerCorners, alpha, removedInnerEdges);
 
   for (const sideGroup of sideGroups) {
-    drawConnectorLines(ctx, getOpenEdgeForSideGroup(corners, sideGroup), outputEdge, alpha);
+    drawConnectorLines(ctx, getOpenEdgeForSideGroup(innerCorners, sideGroup), outputEdge, alpha);
   }
 
   drawConveyorItem(ctx, building, inputEdgesByWorldSide, outputEdge, alpha);
