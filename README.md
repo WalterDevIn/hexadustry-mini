@@ -48,6 +48,7 @@ La version actual contiene:
 - Al seleccionar un bloque, el menu muestra el coste como `material: usa/tengo`.
 - Categorias ordenadas como torretas, extractores, transportadoras, energia, muros, fabricas, unidades y apoyo.
 - Tres bloques construibles de muro: chico, grande y enorme.
+- Taladro comun construible en extractores, con huella de muro grande, coste de cobre, almacenamiento interno y extraccion de mineral.
 - Bloque especial `NUCLEO` en apoyo, con huella de 7 hexes y respawn con `V`.
 - Nucleo inicial ya construido en el origen, ocupando correctamente sus 7 hexes.
 - Recursos iniciales finitos: `260 copper`, `80 lead`, `40 graphite`.
@@ -61,7 +62,7 @@ La version actual contiene:
 - ECS minimo.
 - Enemigos iniciales desactivados temporalmente.
 
-Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primeros muros construibles y ECS.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primeros muros construibles, primer extractor funcional y ECS.
 
 ## Estructura tecnica minima
 
@@ -82,10 +83,16 @@ src/
     buildPlacementInput.js
     keyboardInput.js
   render/
+    buildingRenderer.js
     canvasRenderer.js
+    entityRenderer.js
+    renderUtils.js
+    terrainRenderer.js
+    wallShapeRenderer.js
   systems/
     constructionSystem.js
     coreRespawnSystem.js
+    drillSystem.js
     enemyAiSystem.js
     groundEnemySystem.js
     movementSystem.js
@@ -97,6 +104,7 @@ src/
   world/
     chunkedCaveGeneration.js
     createInitialWorld.js
+    oreVeinGeneration.js
   styles.css
 ```
 
@@ -130,11 +138,12 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `playerTurretSystem`: rota la torreta montada hacia el mouse y dispara si se mantiene click izquierdo sin bloque seleccionado.
 - `projectileSystem`: envejece proyectiles, detecta impacto contra enemigos y elimina entidades destruidas.
 - `coreRespawnSystem`: mueve al jugador al centro visual del nucleo construido cuando se presiona `V`.
+- `drillSystem`: actualiza taladros construidos, detecta el mineral dominante bajo su huella, extrae 1 mineral por segundo y detiene aspas cuando su almacenamiento esta lleno.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
 - `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez, mantiene el resto como cola visual, gasta/devuelve recursos y bloquea el apuntado de la nave hacia la operacion activa.
-- `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
+- `canvasRenderer`: coordina el orden de render; los detalles estan separados en renderers por dominio.
 
 ## Jugador
 
@@ -183,6 +192,10 @@ Hay tres muros construibles en la pestana `MUROS`:
 - `largeWall`: ocupa 3 hexes unidos, cuesta `24 copper` y tiene 2 rotaciones alternables con `R`.
 - `hugeWall`: ocupa 7 hexes, un hex central completamente rodeado, y cuesta `56 copper` + `8 graphite`.
 
+Hay un extractor construible en la pestana `EXTRACTORES`:
+
+- `commonDrill`: `TALADRO COMUN`, ocupa 3 hexes igual que el muro grande, cuesta `36 copper`, tiene 2 rotaciones alternables con `R`, detecta minerales bajo su huella, extrae `1` mineral por segundo y almacena hasta `10` unidades del mineral extraido.
+
 Hay un bloque especial en la pestana `APOYO`:
 
 - `coreBlock`: `NUCLEO`, ocupa 7 hexes igual que el muro enorme, es solido, no cuesta recursos en prototipo y permite reaparecer con `V`.
@@ -194,15 +207,24 @@ Todos los muros:
 - usan el color amarillo del jugador;
 - se renderizan como una figura construida, no como piedra natural.
 
+El taladro comun:
+
+- usa solo contorno exterior de su footprint, sin marco interno;
+- muestra un circulo central coloreado segun el mineral dominante bajo su huella;
+- si pisa varios minerales, usa el mineral que mas casillas ocupe; en empate aplica prioridad `copper > lead > carbon`;
+- tiene 3 triangulos giratorios como aspas alrededor del circulo central;
+- tiene un circulo exterior que encierra las aspas;
+- se detiene visual y funcionalmente cuando llega a `10/10` almacenado.
+
 El nucleo usa la misma huella del muro enorme. Visualmente tiene un contorno exterior de muro completo, un hexagono interno completo y un cuadrado central de lado `1.5 * hexSize`.
 
 Los muros multi-hex reservan todos los tiles de su huella, pero el renderer solo dibuja el contorno exterior y no dibuja divisorias internas entre hexes.
 
-El muro grande mantiene una huella axial entera igual que los otros muros. Su unica diferencia de input es `snapMouseToFootprintCenter`: el mouse se interpreta desde el centro efectivo/interseccion de la pieza para calcular el hex ancla, pero la preview, la construccion y el muro construido usan la misma grilla final sin offsets visuales ni subgrillas.
+El muro grande y el taladro comun mantienen una huella axial entera. Su unica diferencia de input es `snapMouseToFootprintCenter`: el mouse se interpreta desde el centro efectivo/interseccion de la pieza para calcular el hex ancla, pero la preview, la construccion y el bloque construido usan la misma grilla final sin offsets visuales ni subgrillas.
 
 Flujo:
 
-1. Abrir la pestana `MUROS` o `APOYO`.
+1. Abrir la pestana `MUROS`, `EXTRACTORES` o `APOYO`.
 2. Seleccionar un bloque y ver su coste `material: usa/tengo`.
 3. Mover el mouse para ver la previa tenue.
 4. Rotar con `R` si el bloque seleccionado lo permite.
