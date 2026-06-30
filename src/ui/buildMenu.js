@@ -38,13 +38,15 @@ function renderBlockButtons(gameState, blockList, status) {
 
     button.addEventListener("click", () => {
       gameState.ui.buildMenu.selectedBlockId = definition.id;
+      gameState.ui.buildMenu.rotationIndex = 0;
 
       for (const blockButton of blockList.querySelectorAll(".build-menu__block")) {
         blockButton.classList.toggle("is-active", blockButton.dataset.blockId === definition.id);
       }
 
       if (status) {
-        status.textContent = `${definition.label}: listo para colocar`;
+        const rotateHelp = definition.directionMode === "two-way" ? " / R rota" : "";
+        status.textContent = `${definition.label}: listo para colocar${rotateHelp}`;
       }
     });
 
@@ -61,6 +63,7 @@ export function bindBuildMenu(gameState) {
   function selectCategory(categoryId) {
     gameState.ui.buildMenu.activeCategory = categoryId;
     gameState.ui.buildMenu.selectedBlockId = null;
+    gameState.ui.buildMenu.rotationIndex = 0;
 
     for (const tab of tabs) {
       tab.classList.toggle("is-active", tab.dataset.buildCategory === categoryId);
