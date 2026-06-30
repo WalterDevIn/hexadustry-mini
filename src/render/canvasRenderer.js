@@ -1,3 +1,4 @@
+import { queryEntities } from "../ecs/createWorld.js";
 import { axialToPixel, buildHexPolygon } from "../hex/hexMath.js";
 
 const ENTITY_GLYPHS = {
@@ -5,7 +6,6 @@ const ENTITY_GLYPHS = {
   drill: "DRL",
   conveyor: ">>>",
   turret: "TRT",
-  crawler: "BUG",
 };
 
 function drawPath(ctx, points) {
@@ -97,27 +97,52 @@ function drawBuilding(ctx, building, size, origin) {
   ctx.restore();
 }
 
-function drawEnemy(ctx, enemy, size, origin) {
-  const center = axialToPixel(enemy, size, origin);
-  const radius = size * 0.34;
+function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
+  const transform = ecsWorld.components.transform.get(entityId);
+  const renderable = ecsWorld.components.triangleRenderable.get(entityId);
+  const team = ecsWorld.components.team.get(entityId);
+  const radius = renderable.radius;
+  const x = screenOrigin.x + transform.x;
+  const y = screenOrigin.y + transform.y;
 
   ctx.save();
-  ctx.translate(center.x, center.y);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-  ctx.lineWidth = 2;
+  ctx.translate(x, y);
+  ctx.rotate(transform.rotation);
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.96)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.74)";
+  ctx.lineWidth = renderable.lineWidth;
 
   ctx.beginPath();
-  ctx.moveTo(0, -radius);
-  ctx.lineTo(radius, radius);
-  ctx.lineTo(-radius, radius);
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(-radius * 0.78, -radius * 0.66);
+  ctx.lineTo(-radius * 0.46, 0);
+  ctx.lineTo(-radius * 0.78, radius * 0.66);
   ctx.closePath();
+  ctx.fill();
   ctx.stroke();
 
-  ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.24, 0);
+  ctx.lineTo(radius * 0.58, 0);
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "11px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(ENTITY_GLYPHS[enemy.type] ?? "ENM", 0, radius + size * 0.22);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.fillText(renderable.label, x, y + radius + 14);
+
+  if (team?.id === "player") {
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -137,7 +162,7 @@ function drawScanlines(ctx, width, height) {
   ctx.restore();
 }
 
-export function createCanvasRenderer(canvas, world) {
+export function createCanvasRenderer(canvas, gameState) {
   const ctx = canvas.getContext("2d");
   const camera = {
     zoom: 1,
@@ -154,6 +179,7 @@ export function createCanvasRenderer(canvas, world) {
   }
 
   function render() {
+    const { mapWorld, ecsWorld } = gameState;
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
     const hexSize = Math.max(22, Math.min(width, height) / 22) * camera.zoom;
@@ -166,17 +192,19 @@ export function createCanvasRenderer(canvas, world) {
     ctx.fillStyle = "#020202";
     ctx.fillRect(0, 0, width, height);
 
-    for (const hex of world.hexes) {
-      const tile = world.tileMap.get(`${hex.q},${hex.r}`);
+    for (const hex of mapWorld.hexes) {
+      const tile = mapWorld.tileMap.get(`${hex.q},${hex.r}`);
       drawHex(ctx, hex, tile, hexSize, origin);
     }
 
-    for (const building of world.buildings) {
+    for (const building of mapWorld.buildings) {
       drawBuilding(ctx, building, hexSize, origin);
     }
 
-    for (const enemy of world.enemies) {
-      drawEnemy(ctx, enemy, hexSize, origin);
+    const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable"]);
+
+    for (const entityId of triangleEntities) {
+      drawTriangleEntity(ctx, entityId, ecsWorld, origin);
     }
 
     drawScanlines(ctx, width, height);
