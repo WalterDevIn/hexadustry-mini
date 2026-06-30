@@ -13,6 +13,8 @@ Controles actuales:
 
 ```txt
 WASD / Flechas = mover nave del jugador
+Click izquierdo = colocar bloque seleccionado
+Click derecho = deconstruir bloque construido
 ```
 
 ## Estado actual
@@ -32,11 +34,14 @@ La version actual contiene:
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
 - Menu inferior derecho de construccion con pestanas por categoria.
+- Primer bloque construible: muro gratis.
+- Construccion diferida con preview translucido.
+- Deconstruccion de bloques construidos con click derecho.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva, combate real ni colocacion de bloques. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base y ECS.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primer bloque construible y ECS.
 
 ## Estructura tecnica minima
 
@@ -45,6 +50,8 @@ src/
   main.js
   app/
     createGame.js
+  content/
+    buildingDefinitions.js
   ecs/
     createWorld.js
   game/
@@ -52,10 +59,12 @@ src/
   hex/
     hexMath.js
   input/
+    buildPlacementInput.js
     keyboardInput.js
   render/
     canvasRenderer.js
   systems/
+    constructionSystem.js
     enemyAiSystem.js
     groundEnemySystem.js
     movementSystem.js
@@ -95,6 +104,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
+- `constructionSystem`: procesa construcciones pendientes y crea edificios terminados.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
 
 ## Menu de construccion
@@ -109,7 +119,30 @@ El menu inferior derecho contiene pestanas para categorias futuras:
 - unidades;
 - apoyo.
 
-La seleccion se guarda en `gameState.ui.buildMenu.activeCategory`. Todavia no hay bloques disponibles ni colocacion con click.
+La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`.
+
+## Primer bloque: muro
+
+El primer bloque construible es `basicWall`.
+
+Propiedades:
+
+- categoria: muros;
+- costo: `0 copper`, `0 lead`, `0 graphite`;
+- vida: `120 / 120`;
+- solido: si;
+- direccion: ninguna;
+- bloquea enemigos terrestres;
+- se construye con un tiempo minimo corto para mostrar preview translucido.
+
+Flujo:
+
+1. Abrir la pestana `MUROS`.
+2. Seleccionar `MURO`.
+3. Hacer click izquierdo sobre un hex libre.
+4. Aparece una construccion translucida.
+5. Al terminar el tiempo de construccion, aparece el muro solido.
+6. Click derecho sobre el muro construido lo deconstruye y devuelve sus materiales. Como es gratis, devuelve cero.
 
 ## Capas del mapa
 
