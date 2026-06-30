@@ -28,7 +28,8 @@ function createPlayerShip(ecsWorld) {
   addComponent(ecsWorld, "velocity", entityId, {
     x: 0,
     y: 0,
-    maxSpeed: 180,
+    baseMaxSpeed: 360,
+    maxSpeed: 360,
   });
 
   addComponent(ecsWorld, "mapLayer", entityId, {
@@ -36,8 +37,11 @@ function createPlayerShip(ecsWorld) {
   });
 
   addComponent(ecsWorld, "playerControlled", entityId, {
-    thrust: 260,
-    drag: 4.5,
+    thrust: 560,
+    drag: 2.6,
+    brakeDrag: 3.3,
+    accelerationRampSeconds: 3,
+    movementHoldSeconds: 0,
   });
 
   addComponent(ecsWorld, "team", entityId, {
@@ -170,6 +174,7 @@ export function createInitialGameState() {
       down: false,
       left: false,
       right: false,
+      pointerWorld: null,
     },
     ui: {
       buildMenu: {
@@ -178,6 +183,7 @@ export function createInitialGameState() {
         hoveredHex: null,
       },
     },
+    playerAimLock: null,
     time: {
       lastTimestamp: 0,
     },
