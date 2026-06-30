@@ -103,7 +103,17 @@ function clearSelectedBuildBlock(gameState) {
   }
 }
 
+function tryPlaceSelectedBlock(gameState) {
+  const hoveredHex = gameState.ui.buildMenu.hoveredHex;
+
+  if (!hoveredHex || !gameState.ui.buildMenu.selectedBlockId) return null;
+
+  return requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
+}
+
 export function bindBuildPlacementInput(canvas, gameState) {
+  let isBuildDragging = false;
+
   function updatePointer(event) {
     const pointerWorld = getPointerWorldPoint(canvas, gameState, event);
 
@@ -113,9 +123,15 @@ export function bindBuildPlacementInput(canvas, gameState) {
 
   function handlePointerMove(event) {
     updatePointer(event);
+
+    if (isBuildDragging) {
+      tryPlaceSelectedBlock(gameState);
+      event.preventDefault();
+    }
   }
 
   function handlePointerLeave() {
+    isBuildDragging = false;
     gameState.input.pointerWorld = null;
     gameState.input.primaryFire = false;
     gameState.ui.buildMenu.hoveredHex = null;
@@ -134,7 +150,8 @@ export function bindBuildPlacementInput(canvas, gameState) {
         return;
       }
 
-      requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
+      isBuildDragging = true;
+      tryPlaceSelectedBlock(gameState);
       event.preventDefault();
     }
 
@@ -151,6 +168,7 @@ export function bindBuildPlacementInput(canvas, gameState) {
 
   function handlePointerUp(event) {
     if (event.button === 0) {
+      isBuildDragging = false;
       gameState.input.primaryFire = false;
       event.preventDefault();
     }
