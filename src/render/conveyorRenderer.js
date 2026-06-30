@@ -1,6 +1,8 @@
 import { axialToPixel, buildHexPolygon, HEX_DIRECTIONS } from "../hex/hexMath.js";
 import { getOreColor } from "./terrainRenderer.js";
 
+const EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
+
 function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % HEX_DIRECTIONS.length];
   const end = axialToPixel(direction, size);
@@ -51,74 +53,78 @@ function getConnectedInputSides(mapWorld, building) {
   return sides;
 }
 
-function drawHexShell(ctx, size, alpha) {
-  const polygon = buildHexPolygon({ q: 0, r: 0 }, size, { x: 0, y: 0 });
-
-  ctx.beginPath();
-  ctx.moveTo(polygon.corners[0].x, polygon.corners[0].y);
-  for (let i = 1; i < polygon.corners.length; i += 1) ctx.lineTo(polygon.corners[i].x, polygon.corners[i].y);
-  ctx.closePath();
-  ctx.fillStyle = `rgba(255, 255, 255, ${0.014 * alpha})`;
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.64 * alpha})`;
-  ctx.lineWidth = 1.5;
-  ctx.fill();
-  ctx.stroke();
+function getHexCorners(size) {
+  return buildHexPolygon({ q: 0, r: 0 }, size, { x: 0, y: 0 }).corners;
 }
 
-function getSidePoint(sideIndex, size) {
-  const vector = getDirectionVector(sideIndex, size);
+function getSideEdge(corners, sideIndex) {
+  const edgeIndex = EDGE_BY_DIRECTION[sideIndex % EDGE_BY_DIRECTION.length];
 
   return {
-    x: vector.x * size,
-    y: vector.y * size,
-    angle: vector.angle,
+    a: corners[edgeIndex],
+    b: corners[(edgeIndex + 1) % corners.length],
   };
 }
 
-function drawWideBand(ctx, points, width, alpha) {
-  ctx.save();
-  ctx.lineCap = "butt";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.17 * alpha})`;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
-  ctx.stroke();
+function sameEdge(edgeA, edgeB) {
+  return edgeA.a === edgeB.a && edgeA.b === edgeB.b;
+}
 
-  ctx.lineCap = "round";
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.44 * alpha})`;
-  ctx.lineWidth = Math.max(1.3, width * 0.075);
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
-  ctx.stroke();
+function drawOuterHexWithoutEdges(ctx, corners, removedEdges, alpha) {
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.68 * alpha})`;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = "butt";
+
+  for (let i = 0; i < corners.length; i += 1) {
+    const edge = { a: corners[i], b: corners[(i + 1) % corners.length] };
+
+    if (removedEdges.some((removedEdge) => sameEdge(edge, removedEdge))) continue;
+
+    ctx.beginPath();
+    ctx.moveTo(edge.a.x, edge.a.y);
+    ctx.lineTo(edge.b.x, edge.b.y);
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 
-function getBandRoute(sideIndex, size) {
-  const start = getSidePoint(sideIndex, size);
-  const exit = getSidePoint(0, size);
-  const center = { x: 0, y: 0 };
+function getEndpointPair(inputEdge, outputEdge) {
+  const directDistance = Math.hypot(inputEdge.a.x - outputEdge.a.x, inputEdge.a.y - outputEdge.a.y)
+    + Math.hypot(inputEdge.b.x - outputEdge.b.x, inputEdge.b.y - outputEdge.b.y);
+  const crossedDistance = Math.hypot(inputEdge.a.x - outputEdge.b.x, inputEdge.a.y - outputEdge.b.y)
+    + Math.hypot(inputEdge.b.x - outputEdge.a.x, inputEdge.b.y - outputEdge.a.y);
 
-  if (sideIndex === 3) return [start, exit];
+  if (crossedDistance < directDistance) {
+    return [
+      { start: inputEdge.a, end: outputEdge.b },
+      { start: inputEdge.b, end: outputEdge.a },
+    ];
+  }
 
   return [
-    start,
-    { x: start.x * 0.58, y: start.y * 0.58 },
-    center,
-    { x: exit.x * 0.64, y: exit.y * 0.64 },
-    exit,
+    { start: inputEdge.a, end: outputEdge.a },
+    { start: inputEdge.b, end: outputEdge.b },
   ];
 }
 
-function drawBeltBands(ctx, inputSides, size, alpha) {
-  const mainWidth = size * 0.62;
+function drawConnectorLines(ctx, inputEdge, outputEdge, alpha) {
+  const pairs = getEndpointPair(inputEdge, outputEdge);
 
-  for (const sideIndex of inputSides) {
-    const isStraight = sideIndex === 3;
-    drawWideBand(ctx, getBandRoute(sideIndex, size), isStraight ? mainWidth : mainWidth * 0.82, isStraight ? alpha : alpha * 0.92);
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.68 * alpha})`;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = "butt";
+
+  for (const pair of pairs) {
+    ctx.beginPath();
+    ctx.moveTo(pair.start.x, pair.start.y);
+    ctx.lineTo(pair.end.x, pair.end.y);
+    ctx.stroke();
   }
+
+  ctx.restore();
 }
 
 function getSegmentPoint(start, end, t) {
@@ -128,45 +134,59 @@ function getSegmentPoint(start, end, t) {
   };
 }
 
-function getRoutePoint(route, t) {
-  const segmentCount = route.length - 1;
-  const scaled = Math.min(0.999, Math.max(0, t)) * segmentCount;
-  const index = Math.floor(scaled);
-  const localT = scaled - index;
+function getMiddleRoute(inputEdge, outputEdge) {
+  const start = {
+    x: (inputEdge.a.x + inputEdge.b.x) / 2,
+    y: (inputEdge.a.y + inputEdge.b.y) / 2,
+  };
+  const end = {
+    x: (outputEdge.a.x + outputEdge.b.x) / 2,
+    y: (outputEdge.a.y + outputEdge.b.y) / 2,
+  };
 
-  return getSegmentPoint(route[index], route[index + 1], localT);
+  return { start, end };
 }
 
-function drawConveyorItem(ctx, building, size, alpha) {
+function drawConveyorItem(ctx, building, inputEdgesBySide, outputEdge, alpha) {
   const item = building.conveyor?.item;
   if (!item) return;
 
   const transferSeconds = building.conveyor.transferSeconds || 0.33;
   const progress = Math.min(1, building.conveyor.progress / transferSeconds);
-  const entrySide = item.entryDirection ?? 3;
-  const route = getBandRoute(entrySide, size);
-  const position = getRoutePoint(route, progress);
+  const inputEdge = inputEdgesBySide.get(item.entryDirection) ?? inputEdgesBySide.values().next().value;
+
+  if (!inputEdge) return;
+
+  const route = getMiddleRoute(inputEdge, outputEdge);
+  const position = getSegmentPoint(route.start, route.end, progress);
 
   ctx.save();
-  ctx.translate(position.x, position.y - size * 0.02);
-  ctx.font = `700 ${Math.floor(size * 0.48)}px Courier New`;
+  ctx.translate(position.x, position.y);
+  ctx.font = "700 14px Courier New";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.globalAlpha *= alpha;
   ctx.fillStyle = getOreColor({ type: item.type });
-  ctx.fillText("x", 0, size * 0.02);
+  ctx.fillText("x", 0, 0);
   ctx.restore();
 }
 
 export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = null) {
   const direction = getDirectionVector(building.direction ?? 0, size);
   const inputSides = getConnectedInputSides(mapWorld, building);
-
-  drawHexShell(ctx, size, alpha);
+  const corners = getHexCorners(size);
+  const outputEdge = getSideEdge(corners, 0);
+  const inputEdges = inputSides.map((sideIndex) => getSideEdge(corners, sideIndex));
+  const inputEdgesBySide = new Map(inputSides.map((sideIndex, index) => [sideIndex, inputEdges[index]]));
 
   ctx.save();
   ctx.rotate(direction.angle);
-  drawBeltBands(ctx, inputSides, size, alpha);
-  drawConveyorItem(ctx, building, size, alpha);
+  drawOuterHexWithoutEdges(ctx, corners, [outputEdge, ...inputEdges], alpha);
+
+  for (const inputEdge of inputEdges) {
+    drawConnectorLines(ctx, inputEdge, outputEdge, alpha);
+  }
+
+  drawConveyorItem(ctx, building, inputEdgesBySide, outputEdge, alpha);
   ctx.restore();
 }
