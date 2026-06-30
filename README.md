@@ -31,11 +31,12 @@ La version actual contiene:
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
+- Menu inferior derecho de construccion con pestanas por categoria.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks y ECS.
+Todavia no hay simulacion productiva, combate real ni colocacion de bloques. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base y ECS.
 
 ## Estructura tecnica minima
 
@@ -56,8 +57,11 @@ src/
     canvasRenderer.js
   systems/
     enemyAiSystem.js
+    groundEnemySystem.js
     movementSystem.js
     playerControlSystem.js
+  ui/
+    buildMenu.js
   world/
     chunkedCaveGeneration.js
     createInitialWorld.js
@@ -79,16 +83,33 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `mapLayer`: capa de mapa donde existe la entidad.
 - `playerControlled`: marca y parametros de control del jugador.
 - `enemyAi`: comportamiento basico de enemigo.
+- `groundEnemyAi`: comportamiento basico de enemigo terrestre por hexagonos.
 - `team`: faccion o bando.
 - `triangleRenderable`: dibujo de nave triangular.
+- `circleRenderable`: dibujo de unidad circular.
 - `health`: vida actual y maxima.
 
 ### Sistemas actuales
 
 - `playerControlSystem`: lee input y acelera la nave del jugador.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
+- `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
+
+## Menu de construccion
+
+El menu inferior derecho contiene pestanas para categorias futuras:
+
+- torretas;
+- extractores;
+- transportadores;
+- fabricas;
+- muros;
+- unidades;
+- apoyo.
+
+La seleccion se guarda en `gameState.ui.buildMenu.activeCategory`. Todavia no hay bloques disponibles ni colocacion con click.
 
 ## Capas del mapa
 
