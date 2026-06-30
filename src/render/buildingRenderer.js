@@ -14,9 +14,7 @@ import {
 
 const BUILD_ANIMATION_YELLOW = [255, 226, 64];
 const BUILD_ANIMATION_RED = [255, 64, 64];
-const ENTITY_GLYPHS = {
-  turret: "TRT",
-};
+const ENTITY_GLYPHS = { turret: "TRT" };
 
 function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % HEX_DIRECTIONS.length];
@@ -39,12 +37,9 @@ function drawTriangleBlade(ctx, distance, length, width) {
   ctx.stroke();
 }
 
-function getDrillOre(mapWorld, building) {
+function getDrillOre(building) {
   const oreType = building.drill?.extractedType;
-
-  if (!oreType) return null;
-
-  return { type: oreType };
+  return oreType ? { type: oreType } : null;
 }
 
 function drawOuterFootprintOnly(ctx, building, size) {
@@ -56,7 +51,7 @@ function drawOuterFootprintOnly(ctx, building, size) {
   strokeSegments(ctx, outerSegments);
 }
 
-function drawCommonDrill(ctx, building, size, gameState) {
+function drawCommonDrill(ctx, building, size) {
   const center = getWallCenter(building.footprint ?? [{ q: 0, r: 0 }], size);
   const playerRadius = size * 0.4;
   const innerRadius = playerRadius * 0.5;
@@ -65,7 +60,7 @@ function drawCommonDrill(ctx, building, size, gameState) {
   const bladeWidth = size * 0.18;
   const outerRadius = bladeDistance + bladeLength * 0.78;
   const drill = building.drill;
-  const ore = getDrillOre(gameState.mapWorld, building);
+  const ore = getDrillOre(building);
   const oreColor = ore ? getOreColor(ore) : "rgba(255, 255, 255, 0.24)";
   const bladeRotation = drill?.bladeRotation ?? 0;
 
@@ -106,21 +101,77 @@ function drawCommonDrill(ctx, building, size, gameState) {
   ctx.restore();
 }
 
-function drawMovingArrow(ctx, direction, offset, size) {
+function drawHexShell(ctx, size, alpha) {
+  const polygon = buildHexPolygon({ q: 0, r: 0 }, size * 0.78, { x: 0, y: 0 });
+
+  ctx.beginPath();
+  ctx.moveTo(polygon.corners[0].x, polygon.corners[0].y);
+  for (let i = 1; i < polygon.corners.length; i += 1) {
+    ctx.lineTo(polygon.corners[i].x, polygon.corners[i].y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.035 * alpha})`;
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.86 * alpha})`;
+  ctx.lineWidth = 1.8;
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawBeltChannel(ctx, size, alpha) {
+  const halfLength = size * 0.52;
+  const halfHeight = size * 0.18;
+  const wingOuter = size * 0.38;
+  const triangleInset = size * 0.14;
+
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.04 * alpha})`;
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 * alpha})`;
+  ctx.lineWidth = 1.35;
+
+  ctx.beginPath();
+  ctx.moveTo(-halfLength, -halfHeight);
+  ctx.lineTo(halfLength, -halfHeight);
+  ctx.lineTo(halfLength, halfHeight);
+  ctx.lineTo(-halfLength, halfHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-halfLength + triangleInset, -halfHeight);
+  ctx.lineTo(0, -wingOuter);
+  ctx.lineTo(halfLength - triangleInset, -halfHeight);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(-halfLength + triangleInset, halfHeight);
+  ctx.lineTo(0, wingOuter);
+  ctx.lineTo(halfLength - triangleInset, halfHeight);
+  ctx.closePath();
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.88 * alpha})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(halfLength - size * 0.12, -halfHeight * 1.24);
+  ctx.lineTo(halfLength + size * 0.02, 0);
+  ctx.lineTo(halfLength - size * 0.12, halfHeight * 1.24);
+  ctx.stroke();
+}
+
+function drawMovingArrow(ctx, offset, size, alpha) {
   ctx.save();
-  ctx.translate(direction.x * offset, direction.y * offset);
-  ctx.rotate(direction.angle);
-  ctx.font = `700 ${Math.floor(size * 0.48)}px Courier New`;
+  ctx.translate(offset, 0);
+  ctx.font = `700 ${Math.floor(size * 0.5)}px Courier New`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.88 * alpha})`;
   ctx.fillText(">", 0, size * 0.02);
   ctx.restore();
 }
 
-function drawConveyorItem(ctx, building, direction, size) {
+function drawConveyorItem(ctx, building, size, alpha) {
   const item = building.conveyor?.item;
-
   if (!item) return;
 
   const transferSeconds = building.conveyor.transferSeconds || 0.33;
@@ -128,47 +179,32 @@ function drawConveyorItem(ctx, building, direction, size) {
   const travel = -size * 0.42 + progress * size * 0.84;
 
   ctx.save();
-  ctx.translate(direction.x * travel, direction.y * travel);
+  ctx.translate(travel, -size * 0.02);
   ctx.font = `700 ${Math.floor(size * 0.42)}px Courier New`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  ctx.globalAlpha *= alpha;
   ctx.fillStyle = getOreColor({ type: item.type });
   ctx.fillText("x", 0, size * 0.02);
   ctx.restore();
 }
 
-function drawTransportBelt(ctx, building, size) {
-  const polygon = buildHexPolygon({ q: 0, r: 0 }, size * 0.78, { x: 0, y: 0 });
+function drawTransportBelt(ctx, building, size, alpha = 1) {
   const direction = getDirectionVector(building.direction ?? 0, size);
   const phase = building.conveyor?.beltPhase ?? 0;
-  const offsetA = -size * 0.32 + phase * size * 0.64;
-  const offsetB = offsetA - size * 0.34;
+  const offsetA = -size * 0.42 + phase * size * 0.84;
+  const offsetB = offsetA - size * 0.42;
+  const wrappedOffsetB = offsetB < -size * 0.42 ? offsetB + size * 0.84 : offsetB;
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.moveTo(polygon.points[0].x, polygon.points[0].y);
-  for (let i = 1; i < polygon.points.length; i += 1) ctx.lineTo(polygon.points[i].x, polygon.points[i].y);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  drawHexShell(ctx, size, alpha);
 
   ctx.save();
   ctx.rotate(direction.angle);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.42, -size * 0.28);
-  ctx.lineTo(size * 0.42, -size * 0.28);
-  ctx.moveTo(-size * 0.42, size * 0.28);
-  ctx.lineTo(size * 0.42, size * 0.28);
-  ctx.stroke();
+  drawBeltChannel(ctx, size, alpha);
+  drawMovingArrow(ctx, offsetA, size, alpha);
+  drawMovingArrow(ctx, wrappedOffsetB, size, alpha * 0.72);
+  drawConveyorItem(ctx, building, size, alpha);
   ctx.restore();
-
-  drawMovingArrow(ctx, direction, offsetA, size);
-  drawMovingArrow(ctx, direction, offsetB, size);
-  drawConveyorItem(ctx, building, direction, size);
 }
 
 export function drawBuilding(ctx, building, size, origin, gameState) {
@@ -178,21 +214,16 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
   ctx.save();
   ctx.translate(center.x, center.y);
 
-  if (building.deconstructing) {
-    ctx.globalAlpha = 0.46;
-  }
+  if (building.deconstructing) ctx.globalAlpha = 0.46;
 
   ctx.strokeStyle = "rgba(255, 255, 255, 0.94)";
   ctx.fillStyle = "rgba(0, 0, 0, 0.84)";
   ctx.lineWidth = 2;
 
-  if (building.type === "core") {
-    drawCoreShape(ctx, building, size, gameState, 1);
-  } else if (building.type === "drill") {
-    drawCommonDrill(ctx, building, size, gameState);
-  } else if (building.type === "conveyor") {
-    drawTransportBelt(ctx, building, size);
-  } else if (building.type === "turret") {
+  if (building.type === "core") drawCoreShape(ctx, building, size, gameState, 1);
+  else if (building.type === "drill") drawCommonDrill(ctx, building, size);
+  else if (building.type === "conveyor") drawTransportBelt(ctx, building, size, 1);
+  else if (building.type === "turret") {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.75, 0, Math.PI * 2);
     ctx.stroke();
@@ -200,9 +231,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
     ctx.moveTo(0, 0);
     ctx.lineTo(radius * 1.05, -radius * 0.25);
     ctx.stroke();
-  } else if (building.type === "wall") {
-    drawHexWallShape(ctx, building, size, 1);
-  }
+  } else if (building.type === "wall") drawHexWallShape(ctx, building, size, 1);
 
   if (building.type !== "wall" && building.type !== "core" && building.type !== "drill" && building.type !== "conveyor") {
     ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
@@ -254,6 +283,21 @@ export function drawBuildPreview(ctx, gameState, size, origin) {
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  drawQueuedBuildPreviewShape(ctx, { footprint }, size);
+
+  if (definition.type === "conveyor") {
+    drawTransportBelt(
+      ctx,
+      {
+        type: "conveyor",
+        direction: gameState.ui.buildMenu.rotationIndex,
+        conveyor: { beltPhase: 0.22, progress: 0, transferSeconds: definition.transferSeconds ?? 0.33, item: null },
+      },
+      size,
+      0.42,
+    );
+  } else {
+    drawQueuedBuildPreviewShape(ctx, { footprint }, size);
+  }
+
   ctx.restore();
 }
