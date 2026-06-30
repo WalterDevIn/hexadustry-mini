@@ -1,11 +1,11 @@
-import { pixelToAxial, roundAxial } from "../hex/hexMath.js";
+import { axialToPixel, pixelToAxial, roundAxial } from "../hex/hexMath.js";
 import { requestBuildAt, requestDeconstructAt } from "../systems/constructionSystem.js";
 
 function getCameraTarget(gameState) {
   return gameState.ecsWorld.components.transform.get(gameState.playerEntityId) ?? { x: 0, y: 0 };
 }
 
-function getPointerHex(canvas, gameState, event) {
+function getPointerWorldPoint(canvas, gameState, event) {
   const rect = canvas.getBoundingClientRect();
   const screenPoint = {
     x: event.clientX - rect.left,
@@ -16,35 +16,50 @@ function getPointerHex(canvas, gameState, event) {
     x: canvas.clientWidth / 2 - cameraTarget.x,
     y: canvas.clientHeight / 2 - cameraTarget.y,
   };
-  const worldPoint = {
+
+  return {
     x: screenPoint.x - origin.x,
     y: screenPoint.y - origin.y,
   };
+}
 
-  return roundAxial(pixelToAxial(worldPoint, gameState.mapWorld.hexSize));
+function getPointerHex(canvas, gameState, event) {
+  return roundAxial(pixelToAxial(getPointerWorldPoint(canvas, gameState, event), gameState.mapWorld.hexSize));
 }
 
 export function bindBuildPlacementInput(canvas, gameState) {
-  function updateHover(event) {
-    gameState.ui.buildMenu.hoveredHex = getPointerHex(canvas, gameState, event);
+  function updatePointer(event) {
+    const pointerWorld = getPointerWorldPoint(canvas, gameState, event);
+
+    gameState.input.pointerWorld = pointerWorld;
+    gameState.ui.buildMenu.hoveredHex = roundAxial(pixelToAxial(pointerWorld, gameState.mapWorld.hexSize));
   }
 
   function handlePointerMove(event) {
-    updateHover(event);
+    updatePointer(event);
   }
 
   function handlePointerLeave() {
+    gameState.input.pointerWorld = null;
     gameState.ui.buildMenu.hoveredHex = null;
   }
 
   function handlePointerDown(event) {
-    updateHover(event);
+    updatePointer(event);
     const hoveredHex = gameState.ui.buildMenu.hoveredHex;
 
     if (!hoveredHex) return;
 
     if (event.button === 0) {
-      requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
+      const construction = requestBuildAt(gameState, hoveredHex.q, hoveredHex.r);
+
+      if (construction) {
+        gameState.playerAimLock = {
+          constructionId: construction.id,
+          target: axialToPixel(hoveredHex, gameState.mapWorld.hexSize),
+        };
+      }
+
       event.preventDefault();
     }
 
