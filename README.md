@@ -26,7 +26,7 @@ La version actual contiene:
 - Canvas fullscreen.
 - Fondo negro con lineas blancas y scanlines suaves.
 - Mapa hexagonal pointy-top con coordenadas axiales `q,r`.
-- Grilla virtual grande: el mapa tiene radio amplio, pero solo se dibujan los hexes visibles en camara.
+- Grilla virtual grande: el mapa tiene radio amplio, pero solo se dibujan los hexes visibles con contenido relevante.
 - Sistema de chunks para generar terreno bajo demanda.
 - Hexagonos al `0.8` del tamaño visual anterior.
 - Camara centrada en la nave del jugador.
@@ -177,6 +177,8 @@ Capa de suelo. Contiene:
 - terreno base;
 - minerales.
 
+La grilla del suelo no se dibuja como contorno visual. Solo se renderizan elementos con lectura propia, como minerales.
+
 ### `surface`
 
 Capa terrestre. Contiene:
@@ -214,7 +216,7 @@ La estructura busca una lectura similar a cuevas de Terraria:
 - variacion entre `cave-wall` y `dense-rock`;
 - zona segura alrededor del origen para no encerrar al jugador.
 
-El renderer calcula los hexagonos visibles, asegura los chunks cercanos con `ensureChunksForHexes` y luego dibuja la capa terrestre.
+El renderer calcula los hexagonos visibles, asegura los chunks cercanos con `ensureChunksForHexes` y luego aplica un postproceso visual sobre los muros naturales generados. Ese postproceso agrupa `cave-wall` y `dense-rock` en siluetas de 1, 3 o 7 hexes cuando encajan sobre terreno ya generado; no modifica la generacion ni la ocupacion real del mapa.
 
 ## Mapa y camara
 
