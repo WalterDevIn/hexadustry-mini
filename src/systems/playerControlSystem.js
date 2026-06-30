@@ -26,7 +26,11 @@ function getAimTarget(gameState) {
   return gameState.input.pointerWorld;
 }
 
-function pointPlayerAtTarget(transform, target) {
+function normalizeAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function rotatePlayerTowardTarget(transform, target, maxTurnSpeed, dt) {
   if (!target) return;
 
   const dx = target.x - transform.x;
@@ -34,7 +38,12 @@ function pointPlayerAtTarget(transform, target) {
 
   if (Math.hypot(dx, dy) < 0.001) return;
 
-  transform.rotation = Math.atan2(dy, dx);
+  const targetRotation = Math.atan2(dy, dx);
+  const delta = normalizeAngle(targetRotation - transform.rotation);
+  const maxStep = maxTurnSpeed * dt;
+  const step = Math.max(-maxStep, Math.min(maxStep, delta));
+
+  transform.rotation = normalizeAngle(transform.rotation + step);
 }
 
 function getSpeedRampMultiplier(playerControlled) {
@@ -53,6 +62,55 @@ function applyDrag(velocity, drag, dt) {
   velocity.y *= dragFactor;
 }
 
+function spawnExhaustParticle(playerControlled, transform, speedRatio, velocity) {
+  const rearX = transform.x - Math.cos(transform.rotation) * 12;
+  const rearY = transform.y - Math.sin(transform.rotation) * 12;
+  const sideJitter = (Math.random() - 0.5) * 5;
+  const sideX = -Math.sin(transform.rotation) * sideJitter;
+  const sideY = Math.cos(transform.rotation) * sideJitter;
+  const backwardSpeed = 34 + speedRatio * 72;
+
+  playerControlled.exhaustParticles.push({
+    x: rearX + sideX,
+    y: rearY + sideY,
+    vx: velocity.x * 0.18 - Math.cos(transform.rotation) * backwardSpeed,
+    vy: velocity.y * 0.18 - Math.sin(transform.rotation) * backwardSpeed,
+    age: 0,
+    lifetime: 0.22 + Math.random() * 0.18,
+    radius: 1.2 + speedRatio * 2.2 + Math.random() * 0.8,
+  });
+}
+
+function updateExhaustParticles(playerControlled, transform, velocity, dt) {
+  const speed = Math.hypot(velocity.x, velocity.y);
+  const speedRatio = Math.min(1, speed / Math.max(1, velocity.maxSpeed));
+
+  if (speed > 8) {
+    const particlesPerSecond = 8 + speedRatio * 34;
+
+    playerControlled.exhaustAccumulator += particlesPerSecond * dt;
+
+    while (playerControlled.exhaustAccumulator >= 1) {
+      spawnExhaustParticle(playerControlled, transform, speedRatio, velocity);
+      playerControlled.exhaustAccumulator -= 1;
+    }
+  } else {
+    playerControlled.exhaustAccumulator = 0;
+  }
+
+  playerControlled.exhaustParticles = playerControlled.exhaustParticles
+    .map((particle) => ({
+      ...particle,
+      x: particle.x + particle.vx * dt,
+      y: particle.y + particle.vy * dt,
+      age: particle.age + dt,
+      vx: particle.vx * Math.max(0, 1 - 1.8 * dt),
+      vy: particle.vy * Math.max(0, 1 - 1.8 * dt),
+    }))
+    .filter((particle) => particle.age < particle.lifetime)
+    .slice(-90);
+}
+
 export function playerControlSystem(gameState, dt) {
   const { ecsWorld, input, playerEntityId } = gameState;
   const transform = ecsWorld.components.transform.get(playerEntityId);
@@ -61,7 +119,12 @@ export function playerControlSystem(gameState, dt) {
 
   if (!transform || !velocity || !playerControlled) return;
 
-  pointPlayerAtTarget(transform, getAimTarget(gameState));
+  rotatePlayerTowardTarget(
+    transform,
+    getAimTarget(gameState),
+    playerControlled.visualTurnSpeed,
+    dt,
+  );
 
   const axis = getAxis(input);
   const isMoving = axis.length > 0;
@@ -90,4 +153,6 @@ export function playerControlSystem(gameState, dt) {
     velocity.x = (velocity.x / speed) * velocity.maxSpeed;
     velocity.y = (velocity.y / speed) * velocity.maxSpeed;
   }
+
+  updateExhaustParticles(playerControlled, transform, velocity, dt);
 }
