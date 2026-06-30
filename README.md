@@ -13,7 +13,7 @@ Controles actuales:
 
 ```txt
 WASD / Flechas = mover nave del jugador
-Mouse = apuntado del jugador y de la torreta montada
+Mouse = apuntado del jugador, de la torreta montada y de la construccion activa
 Click izquierdo = dispara si no hay bloque seleccionado / coloca bloque seleccionado
 Click izquierdo sostenido = arrastra y encola bloques sobre el rastro
 Click derecho = iniciar deconstruccion o deseleccionar bloque si no hay nada deconstruible
@@ -36,7 +36,7 @@ La version actual contiene:
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
 - Jugador en capa aerea.
-- Jugador con rotacion visual suave hacia el mouse.
+- Jugador con rotacion visual suave hacia el mouse o hacia la operacion de construccion/deconstruccion activa.
 - Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
 - Jugador como triangulo equilatero amarillo de diametro visual igual al 80% de un hex.
 - Particulas de escape detras del jugador al moverse, con mayor emision a mayor velocidad.
@@ -48,6 +48,7 @@ La version actual contiene:
 - Preview tenue del bloque seleccionado siguiendo el mouse.
 - Construcciones y deconstrucciones encoladas con siluetas translucidas.
 - Una sola operacion de construccion/deconstruccion avanza por vez; las demas quedan como previas en espera.
+- Mientras haya operaciones en cola, el modo construccion queda bloqueado: no se puede deseleccionar, cambiar categoria, cambiar bloque ni rotar seleccion.
 - Ritmo de construccion y deconstruccion multiplicado por 4 respecto del tiempo base del bloque.
 - ECS minimo.
 - Enemigos iniciales desactivados temporalmente.
@@ -122,12 +123,14 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
-- `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez y mantiene el resto como cola visual.
+- `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez, mantiene el resto como cola visual y bloquea el apuntado de la nave hacia la operacion activa.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
 
 ## Jugador
 
 El jugador rota suavemente hacia el mouse. La rotacion visual no depende de la direccion de movimiento.
+
+Cuando una construccion o deconstruccion esta activa, el jugador rota hacia el centro visual de esa operacion. Cuando la cola queda vacia, vuelve a rotar hacia el mouse.
 
 El jugador es un triangulo equilatero amarillo. Su diametro visual es igual al 80% de un hexagono.
 
@@ -152,6 +155,8 @@ El menu inferior derecho contiene pestanas para categorias futuras:
 - apoyo.
 
 La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`. La rotacion actual se guarda en `gameState.ui.buildMenu.rotationIndex`.
+
+Mientras haya una construccion o deconstruccion en cola, el modo construccion queda bloqueado. El menu no permite cambiar categoria ni bloque, el click derecho vacio no deselecciona, y `R` no rota la seleccion hasta que la cola se complete.
 
 ## Muros construibles
 
@@ -179,11 +184,13 @@ Flujo:
 3. Mover el mouse para ver la previa tenue.
 4. Rotar con `R` si el muro seleccionado lo permite.
 5. Hacer click izquierdo sobre un hex libre o arrastrar con click izquierdo sostenido.
-6. Cada bloque valido del rastro entra como silueta translucida en la cola de construccion.
-7. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
-8. Al terminar una construccion, aparece el muro solido y empieza la siguiente operacion de la cola.
-9. Click derecho sobre cualquier hex ocupado por un muro construido encola deconstruccion.
-10. Al terminar la deconstruccion, el muro desaparece y devuelve sus materiales.
+6. Cada bloque valido del rastro entra como preview translucida en la cola de construccion.
+7. Desde ese momento el modo construccion queda bloqueado hasta que la cola termine.
+8. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
+9. La nave apunta al centro visual de la operacion que se esta construyendo o destruyendo.
+10. Al terminar una construccion, aparece el muro solido y empieza la siguiente operacion de la cola.
+11. Click derecho sobre cualquier hex ocupado por un muro construido encola deconstruccion.
+12. Al terminar la deconstruccion, el muro desaparece y devuelve sus materiales.
 
 ## Capas del mapa
 
