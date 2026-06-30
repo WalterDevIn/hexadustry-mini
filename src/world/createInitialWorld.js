@@ -54,22 +54,6 @@ function ensureGroundOre(world, q, r) {
   return world.tileMap.get(key) ?? tile;
 }
 
-function placeOre(world, q, r, oreType, amount) {
-  const tile = createWorldTile(world, q, r);
-
-  tile.layers.ground.ore = {
-    type: oreType,
-    amount,
-    generated: false,
-  };
-}
-
-function placeOreLine(world, oreType, amount, hexes) {
-  for (const hex of hexes) {
-    placeOre(world, hex.q, hex.r, oreType, amount);
-  }
-}
-
 function placeNaturalBlock(world, q, r, blockType, hp) {
   const tile = createWorldTile(world, q, r);
 
@@ -169,25 +153,6 @@ export function createInitialWorld() {
   };
 
   world.getOrCreateTile = (q, r) => createWorldTile(world, q, r);
-
-  placeOreLine(world, "copper", 800, [
-    { q: -6, r: 4 },
-    { q: -5, r: 4 },
-    { q: -4, r: 3 },
-    { q: -3, r: 3 },
-    { q: -2, r: 2 },
-  ]);
-  placeOreLine(world, "lead", 650, [
-    { q: 5, r: -6 },
-    { q: 5, r: -5 },
-    { q: 6, r: -6 },
-    { q: 7, r: -7 },
-  ]);
-  placeOreLine(world, "carbon", 520, [
-    { q: 4, r: 3 },
-    { q: 5, r: 3 },
-    { q: 5, r: 4 },
-  ]);
 
   placeNaturalBlock(world, 3, 0, "stone", 180);
   placeNaturalBlock(world, 4, -1, "stone", 180);
