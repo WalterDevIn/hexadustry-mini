@@ -2,6 +2,20 @@ import { axialToPixel } from "../hex/hexMath.js";
 import { createEntity, createWorld, addComponent } from "../ecs/createWorld.js";
 import { createInitialWorld, MAP_LAYERS } from "../world/createInitialWorld.js";
 
+const PLAYER_COLOR = {
+  stroke: "rgba(255, 226, 64, 0.98)",
+  fill: "rgba(255, 226, 64, 0.16)",
+  label: "rgba(255, 236, 126, 0.96)",
+  aura: "rgba(255, 226, 64, 0.28)",
+};
+
+const ENEMY_COLOR = {
+  stroke: "rgba(255, 64, 64, 0.98)",
+  fill: "rgba(255, 64, 64, 0.14)",
+  label: "rgba(255, 120, 120, 0.96)",
+  aura: "rgba(255, 64, 64, 0.2)",
+};
+
 function createPlayerShip(ecsWorld) {
   const entityId = createEntity(ecsWorld);
 
@@ -34,6 +48,7 @@ function createPlayerShip(ecsWorld) {
     radius: 16,
     label: "YOU",
     lineWidth: 2,
+    ...PLAYER_COLOR,
   });
 
   addComponent(ecsWorld, "health", entityId, {
@@ -77,6 +92,7 @@ function createEnemyShip(ecsWorld) {
     radius: 15,
     label: "ENM",
     lineWidth: 2,
+    ...ENEMY_COLOR,
   });
 
   addComponent(ecsWorld, "health", entityId, {
@@ -124,6 +140,7 @@ function createGroundEnemy(ecsWorld, mapWorld) {
     radius: 9,
     label: "GRD",
     lineWidth: 2,
+    ...ENEMY_COLOR,
   });
 
   addComponent(ecsWorld, "health", entityId, {
