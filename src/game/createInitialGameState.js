@@ -154,6 +154,12 @@ export function createInitialGameState() {
       left: false,
       right: false,
     },
+    ui: {
+      buildMenu: {
+        activeCategory: "turrets",
+        selectedBlockId: null,
+      },
+    },
     time: {
       lastTimestamp: 0,
     },
