@@ -35,6 +35,14 @@ function getCoreRespawnPoint(mapWorld) {
   };
 }
 
+function startPlayerSpawn(gameState) {
+  gameState.playerSpawn = {
+    active: true,
+    elapsed: 0,
+    duration: 3,
+  };
+}
+
 export function respawnPlayerAtCore(gameState) {
   const respawnPoint = getCoreRespawnPoint(gameState.mapWorld);
 
@@ -52,6 +60,8 @@ export function respawnPlayerAtCore(gameState) {
     velocity.x = 0;
     velocity.y = 0;
   }
+
+  startPlayerSpawn(gameState);
 
   return true;
 }
