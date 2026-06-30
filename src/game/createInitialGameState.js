@@ -181,6 +181,7 @@ export function createInitialGameState() {
         activeCategory: "turrets",
         selectedBlockId: null,
         hoveredHex: null,
+        rotationIndex: 0,
       },
     },
     playerAimLock: null,
