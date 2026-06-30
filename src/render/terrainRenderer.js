@@ -10,7 +10,7 @@ import {
 } from "./wallShapeRenderer.js";
 import { drawPath } from "./renderUtils.js";
 
-const ORE_COLORS = {
+export const ORE_COLORS = {
   copper: "rgba(255, 139, 46, 0.92)",
   lead: "rgba(132, 158, 178, 0.9)",
   carbon: "rgba(150, 150, 150, 0.86)",
@@ -31,8 +31,8 @@ const ROCK_CLUSTER_FOOTPRINTS = {
   ],
 };
 
-function getOreColor(ore) {
-  return ORE_COLORS[ore.type] ?? ORE_COLORS[ore.colorId] ?? "rgba(255, 255, 255, 0.78)";
+export function getOreColor(ore) {
+  return ORE_COLORS[ore?.type] ?? ORE_COLORS[ore?.colorId] ?? "rgba(255, 255, 255, 0.78)";
 }
 
 function isGroundCovered(tile) {
