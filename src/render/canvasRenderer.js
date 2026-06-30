@@ -575,11 +575,35 @@ function drawEquilateralTriangle(ctx, radius) {
   ctx.closePath();
 }
 
+function drawUnitTurret(ctx, transform, turret, screenOrigin) {
+  const worldRotation = transform.rotation + turret.relativeRotation;
+  const x = screenOrigin.x + transform.x;
+  const y = screenOrigin.y + transform.y;
+  const rearLength = turret.length * turret.rearRatio;
+  const frontLength = turret.length * (1 - turret.rearRatio);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(worldRotation);
+  ctx.strokeStyle = "rgba(255, 236, 126, 0.96)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-rearLength, 0);
+  ctx.lineTo(frontLength, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 2.4, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255, 236, 126, 0.9)";
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   const transform = ecsWorld.components.transform.get(entityId);
   const renderable = ecsWorld.components.triangleRenderable.get(entityId);
   const team = ecsWorld.components.team.get(entityId);
   const playerControlled = ecsWorld.components.playerControlled.get(entityId);
+  const turret = ecsWorld.components.unitTurret.get(entityId);
   const radius = renderable.radius;
   const x = screenOrigin.x + transform.x;
   const y = screenOrigin.y + transform.y;
@@ -618,6 +642,10 @@ function drawTriangleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   }
 
   ctx.restore();
+
+  if (turret) {
+    drawUnitTurret(ctx, transform, turret, screenOrigin);
+  }
 
   if (renderable.showLabel !== false) {
     ctx.save();
@@ -675,7 +703,35 @@ function drawCircleEntity(ctx, entityId, ecsWorld, screenOrigin) {
   ctx.restore();
 }
 
+function drawLineEntity(ctx, entityId, ecsWorld, screenOrigin) {
+  const transform = ecsWorld.components.transform.get(entityId);
+  const renderable = ecsWorld.components.lineRenderable.get(entityId);
+  const x = screenOrigin.x + transform.x;
+  const y = screenOrigin.y + transform.y;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(transform.rotation);
+  ctx.strokeStyle = renderable.stroke ?? DEFAULT_RENDER_COLORS.stroke;
+  ctx.lineWidth = renderable.lineWidth;
+  ctx.beginPath();
+  ctx.moveTo(-renderable.length * 0.5, 0);
+  ctx.lineTo(renderable.length * 0.5, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawEntitiesOnLayer(ctx, ecsWorld, layerId, origin) {
+  const lineEntities = queryEntities(ecsWorld, ["transform", "lineRenderable", "mapLayer"]);
+
+  for (const entityId of lineEntities) {
+    const mapLayer = ecsWorld.components.mapLayer.get(entityId);
+
+    if (mapLayer.id === layerId) {
+      drawLineEntity(ctx, entityId, ecsWorld, origin);
+    }
+  }
+
   const triangleEntities = queryEntities(ecsWorld, ["transform", "triangleRenderable", "mapLayer"]);
 
   for (const entityId of triangleEntities) {
