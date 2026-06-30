@@ -84,6 +84,8 @@ export function createInitialWorld() {
     hexSize: WORLD_HEX_SIZE,
     tileMap: new Map(),
     generatedChunks: new Set(),
+    rockVisualClusters: new Map(),
+    rockVisualClusterOccupied: new Set(),
     layers: {
       ground: {
         description: "Suelo: terreno base y minerales.",
