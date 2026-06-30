@@ -1,6 +1,10 @@
 import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../content/buildingDefinitions.js";
 import { makeHexKey } from "../hex/hexMath.js";
 
+const BUILD_TIME_MULTIPLIER = 4;
+
+let nextConstructionOperationOrder = 1;
+
 function hasEnoughResources(resources, cost) {
   return Object.entries(cost).every(([resourceType, amount]) => {
     return (resources[resourceType] ?? 0) >= amount;
@@ -17,6 +21,17 @@ function subtractResources(resources, cost) {
   for (const [resourceType, amount] of Object.entries(cost)) {
     resources[resourceType] = (resources[resourceType] ?? 0) - amount;
   }
+}
+
+function getOperationOrder() {
+  const operationOrder = nextConstructionOperationOrder;
+  nextConstructionOperationOrder += 1;
+
+  return operationOrder;
+}
+
+function getOperationTotalTime(definition) {
+  return getBuildTime(definition) * BUILD_TIME_MULTIPLIER;
 }
 
 function getAbsoluteFootprint(anchorQ, anchorR, footprint) {
@@ -54,7 +69,7 @@ function isFootprintOccupied(world, occupiedHexes) {
 }
 
 function createConstructionId(definition, q, r) {
-  return `${definition.id}-${makeHexKey(q, r)}-${Date.now()}`;
+  return `${definition.id}-${makeHexKey(q, r)}-${Date.now()}-${nextConstructionOperationOrder}`;
 }
 
 function createBuildingFromConstruction(construction, definition) {
@@ -76,12 +91,6 @@ function createBuildingFromConstruction(construction, definition) {
   };
 }
 
-function clearCompletedAimLock(gameState, constructionId) {
-  if (gameState.playerAimLock?.constructionId === constructionId) {
-    gameState.playerAimLock = null;
-  }
-}
-
 function removeBuilding(world, building) {
   world.buildings = world.buildings.filter((candidate) => candidate.id !== building.id);
 
@@ -92,6 +101,19 @@ function removeBuilding(world, building) {
       tile.layers.surface.buildingId = null;
     }
   }
+}
+
+function getActiveConstructionOperation(world) {
+  const operations = [
+    ...world.pendingConstructions.map((operation) => ({ type: "construction", operation })),
+    ...world.pendingDeconstructions.map((operation) => ({ type: "deconstruction", operation })),
+  ];
+
+  if (operations.length === 0) return null;
+
+  return operations.reduce((oldest, candidate) => {
+    return candidate.operation.operationOrder < oldest.operation.operationOrder ? candidate : oldest;
+  });
 }
 
 export function getSelectedBuildFootprint(gameState) {
@@ -128,8 +150,9 @@ export function requestBuildAt(gameState, q, r) {
     rotationIndex,
     footprint,
     occupiedHexes,
+    operationOrder: getOperationOrder(),
     elapsed: 0,
-    totalTime: getBuildTime(definition),
+    totalTime: getOperationTotalTime(definition),
   };
 
   gameState.mapWorld.pendingConstructions.push(construction);
@@ -151,14 +174,15 @@ export function requestDeconstructAt(gameState, q, r) {
   building.deconstructing = true;
 
   const deconstruction = {
-    id: `deconstruct-${building.id}-${Date.now()}`,
+    id: `deconstruct-${building.id}-${Date.now()}-${nextConstructionOperationOrder}`,
     buildingId: building.id,
     q: building.q,
     r: building.r,
     footprint: building.footprint ?? getBuildingFootprint(definition, building.direction ?? 0),
     occupiedHexes: building.occupiedHexes ?? [{ q: building.q, r: building.r }],
+    operationOrder: getOperationOrder(),
     elapsed: 0,
-    totalTime: getBuildTime(definition),
+    totalTime: getOperationTotalTime(definition),
     refundCost: building.cost ?? definition.cost,
   };
 
@@ -169,13 +193,10 @@ export function requestDeconstructAt(gameState, q, r) {
 
 export function constructionSystem(gameState, dt) {
   const world = gameState.mapWorld;
+  const activeOperation = getActiveConstructionOperation(world);
 
-  for (const construction of world.pendingConstructions) {
-    construction.elapsed += dt;
-  }
-
-  for (const deconstruction of world.pendingDeconstructions) {
-    deconstruction.elapsed += dt;
+  if (activeOperation) {
+    activeOperation.operation.elapsed += dt;
   }
 
   const completedConstructions = world.pendingConstructions.filter((construction) => {
@@ -195,15 +216,9 @@ export function constructionSystem(gameState, dt) {
   for (const construction of completedConstructions) {
     const definition = getBuildingDefinition(construction.definitionId);
 
-    if (!definition) {
-      clearCompletedAimLock(gameState, construction.id);
-      continue;
-    }
+    if (!definition) continue;
 
-    if (isFootprintOccupied(world, construction.occupiedHexes)) {
-      clearCompletedAimLock(gameState, construction.id);
-      continue;
-    }
+    if (isFootprintOccupied(world, construction.occupiedHexes)) continue;
 
     const building = createBuildingFromConstruction(construction, definition);
 
@@ -213,8 +228,6 @@ export function constructionSystem(gameState, dt) {
       const tile = world.getOrCreateTile(hex.q, hex.r);
       tile.layers.surface.buildingId = building.id;
     }
-
-    clearCompletedAimLock(gameState, construction.id);
   }
 
   for (const deconstruction of completedDeconstructions) {
