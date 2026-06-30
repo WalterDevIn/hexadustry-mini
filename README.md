@@ -13,9 +13,9 @@ Controles actuales:
 
 ```txt
 WASD / Flechas = mover nave del jugador
-Mouse = apuntado del jugador
-Click izquierdo = colocar bloque seleccionado
-Click derecho = iniciar deconstruccion del bloque construido
+Mouse = apuntado del jugador y de la torreta montada
+Click izquierdo = dispara si no hay bloque seleccionado / coloca bloque seleccionado
+Click derecho = iniciar deconstruccion o deseleccionar bloque si no hay nada deconstruible
 R = rotar el bloque seleccionado cuando tenga rotaciones
 ```
 
@@ -34,11 +34,13 @@ La version actual contiene:
 - Minerales en capa de suelo.
 - Muros hexagonales naturales generados proceduralmente en capa terrestre.
 - Bloques naturales y construidos en capa terrestre.
-- Jugador y enemigo volador en capa aerea.
+- Jugador en capa aerea.
 - Jugador con rotacion visual suave hacia el mouse o hacia la construccion activa.
 - Movimiento vectorial con inercia, frenado suave y aceleracion progresiva.
 - Jugador como triangulo equilatero amarillo de diametro visual igual al 80% de un hex.
 - Particulas de escape detras del jugador al moverse, con mayor emision a mayor velocidad.
+- Torreta de unidad montada en el jugador, con rotacion propia y disparo automatico si se mantiene click izquierdo.
+- Proyectiles aereos como rayitas rapidas; impactan contra enemigos y atraviesan muros por pertenecer a capa aerea.
 - Menu inferior derecho de construccion con pestanas por categoria.
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Recursos infinitos para pruebas de construccion.
@@ -46,7 +48,7 @@ La version actual contiene:
 - Construccion diferida con preview translucido.
 - Deconstruccion diferida con click derecho.
 - ECS minimo.
-- Enemigo como nave triangular con AI simple de persecucion.
+- Enemigos iniciales desactivados temporalmente.
 
 Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primeros muros construibles y ECS.
 
@@ -76,6 +78,8 @@ src/
     groundEnemySystem.js
     movementSystem.js
     playerControlSystem.js
+    playerTurretSystem.js
+    projectileSystem.js
   ui/
     buildMenu.js
   world/
@@ -98,16 +102,21 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `velocity`: velocidad y velocidad maxima.
 - `mapLayer`: capa de mapa donde existe la entidad.
 - `playerControlled`: marca y parametros de control del jugador.
+- `unitTurret`: torreta montada sobre una unidad, con rotacion relativa, recarga y datos de proyectil.
+- `projectile`: proyectil con vida util, radio de impacto y daño.
 - `enemyAi`: comportamiento basico de enemigo.
 - `groundEnemyAi`: comportamiento basico de enemigo terrestre por hexagonos.
 - `team`: faccion o bando.
 - `triangleRenderable`: dibujo de nave triangular.
 - `circleRenderable`: dibujo de unidad circular.
+- `lineRenderable`: dibujo de rayitas, usado por proyectiles.
 - `health`: vida actual y maxima.
 
 ### Sistemas actuales
 
 - `playerControlSystem`: lee input, rota visualmente hacia el objetivo, acelera la nave y emite particulas.
+- `playerTurretSystem`: rota la torreta montada hacia el mouse y dispara si se mantiene click izquierdo sin bloque seleccionado.
+- `projectileSystem`: envejece proyectiles, detecta impacto contra enemigos y elimina entidades destruidas.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
@@ -125,6 +134,10 @@ El jugador es un triangulo equilatero amarillo. Su diametro visual es igual al 8
 El movimiento es vectorial: se puede acelerar en cualquier direccion usando WASD o flechas. La nave tiene inercia, tarda un poco en frenar y su velocidad maxima sube progresivamente hasta 2x despues de 3 segundos continuos de movimiento.
 
 Cuando se mueve, la parte trasera de la nave emite particulas. La emision y el tamaño de las particulas aumentan con la velocidad actual.
+
+La nave tiene una torreta de unidad montada cerca del centro. Visualmente es un palito con pivote alrededor del 25% de su largo: una parte corta queda hacia atras y la mayor parte queda hacia adelante. La torreta rota de forma independiente respecto del cuerpo de la nave; su rotacion mundial resulta de la rotacion del cuerpo mas su propia rotacion relativa.
+
+Si no hay bloque seleccionado, mantener click izquierdo dispara automaticamente rayitas rapidas desde la torreta. Los proyectiles son aereos: atraviesan muros y solo impactan contra entidades enemigas con vida.
 
 ## Menu de construccion
 
@@ -199,7 +212,8 @@ Capa terrestre. Contiene:
 Capa aerea. Contiene:
 
 - jugador;
-- unidades voladoras.
+- unidades voladoras;
+- proyectiles aereos.
 
 El renderer dibuja en este orden:
 
@@ -207,7 +221,7 @@ El renderer dibuja en este orden:
 ground -> surface -> air
 ```
 
-Eso permite que minerales queden debajo, edificios/bloques queden en superficie y naves voladoras queden por encima.
+Eso permite que minerales queden debajo, edificios/bloques queden en superficie y naves/proyectiles aereos queden por encima.
 
 ## Chunks y cuevas
 
