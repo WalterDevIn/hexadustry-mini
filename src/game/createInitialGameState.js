@@ -47,6 +47,18 @@ function createPlayerShip(ecsWorld, mapWorld) {
     exhaustParticles: [],
   });
 
+  addComponent(ecsWorld, "unitTurret", entityId, {
+    relativeRotation: 0,
+    turnSpeed: Math.PI * 1.45,
+    length: mapWorld.hexSize * 0.86,
+    rearRatio: 0.25,
+    reloadSeconds: 0.11,
+    cooldown: 0,
+    projectileSpeed: 900,
+    projectileLifetime: 0.58,
+    projectileDamage: 12,
+  });
+
   addComponent(ecsWorld, "team", entityId, {
     id: "player",
   });
@@ -165,21 +177,20 @@ export function createInitialGameState() {
   const mapWorld = createInitialWorld();
 
   const playerEntityId = createPlayerShip(ecsWorld, mapWorld);
-  const enemyEntityId = createEnemyShip(ecsWorld);
-  const groundEnemyEntityId = createGroundEnemy(ecsWorld, mapWorld);
 
   return {
     mapWorld,
     ecsWorld,
     playerEntityId,
-    enemyEntityId,
-    groundEnemyEntityId,
+    enemyEntityId: null,
+    groundEnemyEntityId: null,
     input: {
       up: false,
       down: false,
       left: false,
       right: false,
       pointerWorld: null,
+      primaryFire: false,
     },
     ui: {
       buildMenu: {
