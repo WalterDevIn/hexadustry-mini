@@ -10,6 +10,12 @@ const DEFAULT_RENDER_COLORS = {
   aura: "rgba(255, 255, 255, 0.22)",
 };
 
+const PLAYER_YELLOW = {
+  stroke: "rgba(255, 226, 64, 0.98)",
+  fill: "rgba(255, 226, 64, 0.12)",
+  detail: "rgba(255, 236, 126, 0.78)",
+};
+
 const ENTITY_GLYPHS = {
   core: "CORE",
   drill: "DRL",
@@ -53,35 +59,48 @@ function drawGroundLayer(ctx, hex, tile, size, origin) {
   }
 }
 
+function drawCornerHexFrame(ctx, corners, segmentRatio) {
+  for (let i = 0; i < corners.length; i += 1) {
+    const previous = corners[(i + corners.length - 1) % corners.length];
+    const current = corners[i];
+    const next = corners[(i + 1) % corners.length];
+    const towardPrevious = {
+      x: current.x + (previous.x - current.x) * segmentRatio,
+      y: current.y + (previous.y - current.y) * segmentRatio,
+    };
+    const towardNext = {
+      x: current.x + (next.x - current.x) * segmentRatio,
+      y: current.y + (next.y - current.y) * segmentRatio,
+    };
+
+    ctx.beginPath();
+    ctx.moveTo(towardPrevious.x, towardPrevious.y);
+    ctx.lineTo(current.x, current.y);
+    ctx.lineTo(towardNext.x, towardNext.y);
+    ctx.stroke();
+  }
+}
+
 function drawHexWallShape(ctx, size, alpha = 1) {
-  const corners = [];
+  const outerCorners = [];
+  const innerCorners = [];
 
   for (let i = 0; i < 6; i += 1) {
-    corners.push(hexCorner({ x: 0, y: 0 }, size * 0.82, i));
+    outerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.82, i));
+    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.66, i));
   }
 
-  ctx.fillStyle = `rgba(255, 255, 255, ${0.08 * alpha})`;
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.88 * alpha})`;
-  ctx.lineWidth = 2;
-
-  drawPath(ctx, corners);
+  ctx.fillStyle = `rgba(255, 226, 64, ${0.05 * alpha})`;
+  drawPath(ctx, outerCorners);
   ctx.fill();
-  ctx.stroke();
 
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.62 * alpha})`;
+  ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
+  ctx.lineWidth = 2.2;
+  drawCornerHexFrame(ctx, outerCorners, 0.26);
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.74 * alpha})`;
   ctx.lineWidth = 1.4;
-
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.38, -size * 0.08);
-  ctx.lineTo(-size * 0.08, -size * 0.28);
-  ctx.lineTo(size * 0.36, -size * 0.04);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.28, size * 0.28);
-  ctx.lineTo(size * 0.04, size * 0.08);
-  ctx.lineTo(size * 0.4, size * 0.22);
-  ctx.stroke();
+  drawCornerHexFrame(ctx, innerCorners, 0.22);
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
@@ -209,7 +228,7 @@ function drawBuilding(ctx, building, size, origin) {
   ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.fillStyle = building.type === "wall" ? PLAYER_YELLOW.detail : "rgba(255, 255, 255, 0.95)";
   ctx.fillText(ENTITY_GLYPHS[building.type] ?? "???", 0, radius + size * 0.22);
 
   ctx.restore();
@@ -221,13 +240,13 @@ function drawPendingConstruction(ctx, construction, size, origin) {
 
   ctx.save();
   ctx.translate(center.x, center.y);
-  ctx.globalAlpha = 0.28 + progress * 0.38;
-  drawHexWallShape(ctx, size, 0.72);
+  ctx.globalAlpha = 0.32 + progress * 0.34;
+  drawHexWallShape(ctx, size, 0.7);
 
   ctx.font = `${Math.floor(size * 0.18)}px Courier New`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.fillStyle = `rgba(255, 236, 126, ${0.72 + progress * 0.2})`;
   ctx.fillText(`${Math.round(progress * 100)}%`, 0, size * 0.54);
   ctx.restore();
 }
