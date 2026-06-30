@@ -4,6 +4,7 @@ import { getOreColor } from "./terrainRenderer.js";
 const EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
 const DIRECTION_COUNT = HEX_DIRECTIONS.length;
 const INNER_SCALE = 0.82;
+const HUB_SCALE = 0.18;
 const BELT_STROKE = [255, 226, 64];
 
 function yellow(alpha) {
@@ -13,7 +14,6 @@ function yellow(alpha) {
 function getDirectionVector(directionIndex, size) {
   const direction = HEX_DIRECTIONS[directionIndex % DIRECTION_COUNT];
   const end = axialToPixel(direction, size);
-
   return { angle: Math.atan2(end.y, end.x) };
 }
 
@@ -70,17 +70,13 @@ function getOuterCorners(size) {
   return buildHexPolygon({ q: 0, r: 0 }, size, { x: 0, y: 0 }).corners;
 }
 
-function getInnerCorners(size) {
-  return getOuterCorners(size).map((corner) => ({ x: corner.x * INNER_SCALE, y: corner.y * INNER_SCALE }));
+function getScaledCorners(size, scale) {
+  return getOuterCorners(size).map((corner) => ({ x: corner.x * scale, y: corner.y * scale }));
 }
 
 function getSideEdge(corners, sideIndex) {
   const edgeIndex = EDGE_BY_DIRECTION[sideIndex % EDGE_BY_DIRECTION.length];
   return { a: corners[edgeIndex], b: corners[(edgeIndex + 1) % corners.length] };
-}
-
-function getPointKey(point) {
-  return `${point.x.toFixed(3)},${point.y.toFixed(3)}`;
 }
 
 function samePoint(a, b) {
@@ -108,6 +104,42 @@ function drawEdges(ctx, corners, alpha, removedEdges = []) {
   }
 
   ctx.restore();
+}
+
+function getPointKey(point) {
+  return `${point.x.toFixed(3)},${point.y.toFixed(3)}`;
+}
+
+function groupContiguousSides(localInputSides) {
+  const sides = [...new Set(localInputSides)].filter((side) => side !== 0).sort((a, b) => a - b);
+  const groups = [];
+
+  for (const side of sides) {
+    const last = groups[groups.length - 1];
+    const previous = last?.[last.length - 1];
+    if (last && side === previous + 1) last.push(side);
+    else groups.push([side]);
+  }
+
+  return groups;
+}
+
+function getOpenEdgeForSideGroup(corners, sideGroup) {
+  const pointCounts = new Map();
+  const pointByKey = new Map();
+
+  for (const side of sideGroup) {
+    const edge = getSideEdge(corners, side);
+    for (const point of [edge.a, edge.b]) {
+      const key = getPointKey(point);
+      pointByKey.set(key, point);
+      pointCounts.set(key, (pointCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const endpoints = [...pointCounts.entries()].filter(([, count]) => count === 1).map(([key]) => pointByKey.get(key));
+  if (endpoints.length >= 2) return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
+  return getSideEdge(corners, sideGroup[0]);
 }
 
 function midpoint(edge) {
@@ -163,7 +195,7 @@ function getRouteAngle(route, t) {
 function extendRouteForArrow(route, size) {
   const arrowHeight = size * 0.3;
   const firstAngle = Math.atan2(route[1].y - route[0].y, route[1].x - route[0].x);
-  const lastAngle = Math.atan2(route[route.length - 1].y - route[route.length - 2].y, route[route.length - 1].x - route[route.length - 2].x);
+  const lastAngle = Math.atan2(route.at(-1).y - route.at(-2).y, route.at(-1).x - route.at(-2).x);
   const start = { x: route[0].x - Math.cos(firstAngle) * arrowHeight, y: route[0].y - Math.sin(firstAngle) * arrowHeight };
   const end = { x: route.at(-1).x + Math.cos(lastAngle) * arrowHeight, y: route.at(-1).y + Math.sin(lastAngle) * arrowHeight };
   return [start, ...route.slice(1, -1), end];
@@ -173,71 +205,29 @@ function getDuctRoute(inputEdge, outputEdge) {
   return [midpoint(inputEdge), { x: 0, y: 0 }, midpoint(outputEdge)];
 }
 
-function getEndpointPair(inputEdge, outputEdge) {
-  const directDistance = Math.hypot(inputEdge.a.x - outputEdge.a.x, inputEdge.a.y - outputEdge.a.y)
-    + Math.hypot(inputEdge.b.x - outputEdge.b.x, inputEdge.b.y - outputEdge.b.y);
-  const crossedDistance = Math.hypot(inputEdge.a.x - outputEdge.b.x, inputEdge.a.y - outputEdge.b.y)
-    + Math.hypot(inputEdge.b.x - outputEdge.a.x, inputEdge.b.y - outputEdge.a.y);
-
-  if (crossedDistance < directDistance) return [{ start: inputEdge.a, end: outputEdge.b }, { start: inputEdge.b, end: outputEdge.a }];
-  return [{ start: inputEdge.a, end: outputEdge.a }, { start: inputEdge.b, end: outputEdge.b }];
+function getEndpointPair(fromEdge, toEdge) {
+  const directDistance = getPointDistance(fromEdge.a, toEdge.a) + getPointDistance(fromEdge.b, toEdge.b);
+  const crossedDistance = getPointDistance(fromEdge.a, toEdge.b) + getPointDistance(fromEdge.b, toEdge.a);
+  if (crossedDistance < directDistance) return [{ start: fromEdge.a, end: toEdge.b }, { start: fromEdge.b, end: toEdge.a }];
+  return [{ start: fromEdge.a, end: toEdge.a }, { start: fromEdge.b, end: toEdge.b }];
 }
 
-function drawDuctWalls(ctx, inputEdge, outputEdge, size, alpha) {
-  const pairs = getEndpointPair(inputEdge, outputEdge);
-  const centerOffsets = [-0.055, 0.055];
+function drawEdgePairConnector(ctx, fromEdge, toEdge, alpha) {
+  const pairs = getEndpointPair(fromEdge, toEdge);
 
   ctx.save();
   ctx.strokeStyle = yellow(0.72 * alpha);
   ctx.lineWidth = 1.5;
   ctx.lineCap = "butt";
-  ctx.lineJoin = "round";
 
-  pairs.forEach((pair, index) => {
-    const angle = getRouteAngle([pair.start, { x: 0, y: 0 }, pair.end], 0.5);
-    const normal = { x: -Math.sin(angle), y: Math.cos(angle) };
-    const center = { x: normal.x * centerOffsets[index] * size, y: normal.y * centerOffsets[index] * size };
-
+  for (const pair of pairs) {
     ctx.beginPath();
     ctx.moveTo(pair.start.x, pair.start.y);
-    ctx.lineTo(center.x, center.y);
     ctx.lineTo(pair.end.x, pair.end.y);
     ctx.stroke();
-  });
+  }
 
   ctx.restore();
-}
-
-function groupContiguousSides(localInputSides) {
-  const uniqueSides = [...new Set(localInputSides)].filter((side) => side !== 0).sort((a, b) => a - b);
-  const groups = [];
-
-  for (const side of uniqueSides) {
-    const lastGroup = groups[groups.length - 1];
-    const previousSide = lastGroup?.[lastGroup.length - 1];
-    if (lastGroup && side === previousSide + 1) lastGroup.push(side);
-    else groups.push([side]);
-  }
-
-  return groups;
-}
-
-function getOpenEdgeForSideGroup(corners, sideGroup) {
-  const pointCounts = new Map();
-  const pointByKey = new Map();
-
-  for (const side of sideGroup) {
-    const edge = getSideEdge(corners, side);
-    for (const point of [edge.a, edge.b]) {
-      const key = getPointKey(point);
-      pointByKey.set(key, point);
-      pointCounts.set(key, (pointCounts.get(key) ?? 0) + 1);
-    }
-  }
-
-  const endpoints = [...pointCounts.entries()].filter(([, count]) => count === 1).map(([key]) => pointByKey.get(key));
-  if (endpoints.length >= 2) return { a: endpoints[0], b: endpoints[endpoints.length - 1] };
-  return getSideEdge(corners, sideGroup[0]);
 }
 
 function clipToHex(ctx, corners) {
@@ -298,9 +288,11 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   const localInputSides = getConnectedInputSides(mapWorld, building);
   const sideGroups = groupContiguousSides(localInputSides);
   const outerCorners = getOuterCorners(size);
-  const innerCorners = getInnerCorners(size);
+  const innerCorners = getScaledCorners(size, INNER_SCALE);
+  const hubCorners = getScaledCorners(size, HUB_SCALE);
   const outputOuterEdge = getSideEdge(outerCorners, 0);
   const outputInnerEdge = getSideEdge(innerCorners, 0);
+  const outputHubEdge = getSideEdge(hubCorners, 0);
   const inputOuterEdges = localInputSides.map((localSide) => getSideEdge(outerCorners, localSide));
   const inputInnerEdges = localInputSides.map((localSide) => getSideEdge(innerCorners, localSide));
   const inputEdgesByWorldSide = new Map(localInputSides.map((localSide, index) => [toWorldSide(localSide, outputSide), inputInnerEdges[index]]));
@@ -310,8 +302,14 @@ export function drawTransportBelt(ctx, building, size, alpha = 1, mapWorld = nul
   ctx.rotate(direction.angle);
   drawEdges(ctx, outerCorners, alpha, [outputOuterEdge, ...inputOuterEdges]);
   drawEdges(ctx, innerCorners, alpha, [outputInnerEdge, ...inputInnerEdges]);
+  drawEdgePairConnector(ctx, outputHubEdge, outputInnerEdge, alpha);
 
-  for (const sideGroup of sideGroups) drawDuctWalls(ctx, getOpenEdgeForSideGroup(innerCorners, sideGroup), outputInnerEdge, size, alpha);
+  for (const sideGroup of sideGroups) {
+    const groupEdge = getOpenEdgeForSideGroup(innerCorners, sideGroup);
+    const groupCenterSide = Math.round(sideGroup.reduce((sum, side) => sum + side, 0) / sideGroup.length) % DIRECTION_COUNT;
+    const hubEdge = getSideEdge(hubCorners, groupCenterSide);
+    drawEdgePairConnector(ctx, groupEdge, hubEdge, alpha);
+  }
 
   localInputSides.forEach((localSide, index) => {
     const inputEdge = getSideEdge(innerCorners, localSide);
