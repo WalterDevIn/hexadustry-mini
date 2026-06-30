@@ -1,4 +1,5 @@
 import { axialToPixel, pixelToAxial, roundAxial } from "../hex/hexMath.js";
+import { getBuildingDefinition, getBuildingRotationCount } from "../content/buildingDefinitions.js";
 import { requestBuildAt, requestDeconstructAt } from "../systems/constructionSystem.js";
 
 function getCameraTarget(gameState) {
@@ -23,8 +24,14 @@ function getPointerWorldPoint(canvas, gameState, event) {
   };
 }
 
-function getPointerHex(canvas, gameState, event) {
-  return roundAxial(pixelToAxial(getPointerWorldPoint(canvas, gameState, event), gameState.mapWorld.hexSize));
+function cycleSelectedBlockRotation(gameState) {
+  const selectedBlockId = gameState.ui.buildMenu.selectedBlockId;
+  const definition = getBuildingDefinition(selectedBlockId);
+  const rotationCount = getBuildingRotationCount(definition);
+
+  if (rotationCount <= 1) return;
+
+  gameState.ui.buildMenu.rotationIndex = (gameState.ui.buildMenu.rotationIndex + 1) % rotationCount;
 }
 
 export function bindBuildPlacementInput(canvas, gameState) {
@@ -69,6 +76,13 @@ export function bindBuildPlacementInput(canvas, gameState) {
     }
   }
 
+  function handleKeyDown(event) {
+    if (event.code !== "KeyR") return;
+
+    cycleSelectedBlockRotation(gameState);
+    event.preventDefault();
+  }
+
   function handleContextMenu(event) {
     event.preventDefault();
   }
@@ -77,11 +91,13 @@ export function bindBuildPlacementInput(canvas, gameState) {
   canvas.addEventListener("pointerleave", handlePointerLeave);
   canvas.addEventListener("pointerdown", handlePointerDown);
   canvas.addEventListener("contextmenu", handleContextMenu);
+  window.addEventListener("keydown", handleKeyDown);
 
   return () => {
     canvas.removeEventListener("pointermove", handlePointerMove);
     canvas.removeEventListener("pointerleave", handlePointerLeave);
     canvas.removeEventListener("pointerdown", handlePointerDown);
     canvas.removeEventListener("contextmenu", handleContextMenu);
+    window.removeEventListener("keydown", handleKeyDown);
   };
 }
