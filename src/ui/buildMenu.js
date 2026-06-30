@@ -1,4 +1,5 @@
 import { getBuildingFootprint, getBuildingsByCategory } from "../content/buildingDefinitions.js";
+import { isConstructionModeLocked } from "../systems/constructionSystem.js";
 
 export const BUILD_CATEGORIES = [
   { id: "turrets", label: "TORRETAS", icon: "⌖" },
@@ -75,6 +76,12 @@ function syncBlockSelection(gameState, blockList) {
   }
 }
 
+function showConstructionLockStatus(status) {
+  if (status) {
+    status.textContent = "construccion en curso";
+  }
+}
+
 function renderBlockButtons(gameState, blockList, status) {
   const categoryId = gameState.ui.buildMenu.activeCategory;
   const definitions = getBuildingsByCategory(categoryId);
@@ -106,6 +113,12 @@ function renderBlockButtons(gameState, blockList, status) {
     button.append(createBlockPreview(definition), label);
 
     button.addEventListener("click", () => {
+      if (isConstructionModeLocked(gameState)) {
+        showConstructionLockStatus(status);
+        syncBlockSelection(gameState, blockList);
+        return;
+      }
+
       gameState.ui.buildMenu.selectedBlockId = definition.id;
       gameState.ui.buildMenu.rotationIndex = 0;
       syncBlockSelection(gameState, blockList);
@@ -127,6 +140,11 @@ export function bindBuildMenu(gameState) {
   const blockList = document.querySelector("#build-menu-block-list");
 
   function selectCategory(categoryId) {
+    if (isConstructionModeLocked(gameState)) {
+      showConstructionLockStatus(status);
+      return;
+    }
+
     gameState.ui.buildMenu.activeCategory = categoryId;
     gameState.ui.buildMenu.selectedBlockId = null;
     gameState.ui.buildMenu.rotationIndex = 0;
