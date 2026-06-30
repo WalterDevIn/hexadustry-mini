@@ -34,14 +34,14 @@ La version actual contiene:
 - Bloques naturales y construidos en capa terrestre.
 - Jugador y enemigo volador en capa aerea.
 - Menu inferior derecho de construccion con pestanas por categoria.
-- Primer bloque construible: muro gratis.
+- Tres bloques construibles de muro: chico, grande y enorme.
 - Construccion diferida con preview translucido.
 - Deconstruccion de bloques construidos con click derecho.
 - ECS minimo.
 - Jugador como nave triangular.
 - Enemigo como nave triangular con AI simple de persecucion.
 
-Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primer bloque construible y ECS.
+Todavia no hay simulacion productiva ni combate real. Esta version fija la base visual, geometrica, capas de mapa, chunks, UI base, primeros muros construibles y ECS.
 
 ## Estructura tecnica minima
 
@@ -121,28 +121,32 @@ El menu inferior derecho contiene pestanas para categorias futuras:
 
 La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`.
 
-## Primer bloque: muro
+## Muros construibles
 
-El primer bloque construible es `basicWall`.
+Hay tres muros construibles en la pestana `MUROS`:
 
-Propiedades:
+- `basicWall`: ocupa 1 hex.
+- `largeWall`: ocupa 3 hexes unidos.
+- `hugeWall`: ocupa 7 hexes, un hex central completamente rodeado.
 
-- categoria: muros;
-- costo: `0 copper`, `0 lead`, `0 graphite`;
-- vida: `120 / 120`;
-- solido: si;
-- direccion: ninguna;
-- bloquea enemigos terrestres;
-- se construye con un tiempo minimo corto para mostrar preview translucido.
+Todos los muros:
+
+- son solidos;
+- no tienen direccion;
+- bloquean enemigos terrestres;
+- usan el color amarillo del jugador;
+- se renderizan como una figura construida, no como piedra natural.
+
+Los muros multi-hex reservan todos los tiles de su huella, pero el renderer solo dibuja el contorno exterior y no dibuja divisorias internas entre hexes.
 
 Flujo:
 
 1. Abrir la pestana `MUROS`.
-2. Seleccionar `MURO`.
+2. Seleccionar un muro.
 3. Hacer click izquierdo sobre un hex libre.
 4. Aparece una construccion translucida.
 5. Al terminar el tiempo de construccion, aparece el muro solido.
-6. Click derecho sobre el muro construido lo deconstruye y devuelve sus materiales. Como es gratis, devuelve cero.
+6. Click derecho sobre cualquier hex ocupado por el muro lo deconstruye completo y devuelve sus materiales.
 
 ## Capas del mapa
 
