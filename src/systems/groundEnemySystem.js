@@ -3,11 +3,22 @@ import { axialToPixel, HEX_DIRECTIONS, pixelToAxial, roundAxial, hexDistance } f
 
 const SOLID_NATURAL_BLOCKS = new Set(["cave-wall", "dense-rock"]);
 
+function findBuildingById(mapWorld, buildingId) {
+  return mapWorld.buildings.find((building) => building.id === buildingId) ?? null;
+}
+
 function isSolidForGroundEnemy(mapWorld, q, r) {
   const tile = mapWorld.getOrCreateTile(q, r);
   const naturalBlock = tile.layers.surface.naturalBlock;
+  const building = tile.layers.surface.buildingId
+    ? findBuildingById(mapWorld, tile.layers.surface.buildingId)
+    : null;
 
   if (naturalBlock && SOLID_NATURAL_BLOCKS.has(naturalBlock.type)) {
+    return true;
+  }
+
+  if (building?.solid) {
     return true;
   }
 
