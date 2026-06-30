@@ -1,5 +1,6 @@
 import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
 import { axialToPixel, buildHexPolygon, HEX_DIRECTIONS } from "../hex/hexMath.js";
+import { drawTransportBelt as drawRedesignedTransportBelt } from "./conveyorRenderer.js";
 import { easeOutCubic } from "./renderUtils.js";
 import { getOreColor } from "./terrainRenderer.js";
 import {
@@ -222,7 +223,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
 
   if (building.type === "core") drawCoreShape(ctx, building, size, gameState, 1);
   else if (building.type === "drill") drawCommonDrill(ctx, building, size);
-  else if (building.type === "conveyor") drawTransportBelt(ctx, building, size, 1);
+  else if (building.type === "conveyor") drawRedesignedTransportBelt(ctx, building, size, 1);
   else if (building.type === "turret") {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.75, 0, Math.PI * 2);
@@ -285,7 +286,7 @@ export function drawBuildPreview(ctx, gameState, size, origin) {
   ctx.translate(center.x, center.y);
 
   if (definition.type === "conveyor") {
-    drawTransportBelt(
+    drawRedesignedTransportBelt(
       ctx,
       {
         type: "conveyor",
