@@ -16,7 +16,7 @@ const ENEMY_COLOR = {
   aura: "rgba(255, 64, 64, 0.2)",
 };
 
-function createPlayerShip(ecsWorld) {
+function createPlayerShip(ecsWorld, mapWorld) {
   const entityId = createEntity(ecsWorld);
 
   addComponent(ecsWorld, "transform", entityId, {
@@ -42,6 +42,9 @@ function createPlayerShip(ecsWorld) {
     brakeDrag: 3.3,
     accelerationRampSeconds: 3,
     movementHoldSeconds: 0,
+    visualTurnSpeed: Math.PI * 2.4,
+    exhaustAccumulator: 0,
+    exhaustParticles: [],
   });
 
   addComponent(ecsWorld, "team", entityId, {
@@ -49,9 +52,11 @@ function createPlayerShip(ecsWorld) {
   });
 
   addComponent(ecsWorld, "triangleRenderable", entityId, {
-    radius: 16,
+    radius: mapWorld.hexSize * 0.4,
     label: "YOU",
     lineWidth: 2,
+    equilateral: true,
+    showLabel: false,
     ...PLAYER_COLOR,
   });
 
@@ -159,7 +164,7 @@ export function createInitialGameState() {
   const ecsWorld = createWorld();
   const mapWorld = createInitialWorld();
 
-  const playerEntityId = createPlayerShip(ecsWorld);
+  const playerEntityId = createPlayerShip(ecsWorld, mapWorld);
   const enemyEntityId = createEnemyShip(ecsWorld);
   const groundEnemyEntityId = createGroundEnemy(ecsWorld, mapWorld);
 
