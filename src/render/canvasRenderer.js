@@ -16,6 +16,8 @@ const PLAYER_YELLOW = {
   detail: "rgba(255, 236, 126, 0.78)",
 };
 
+const HEX_EDGE_BY_DIRECTION = [0, 5, 4, 3, 2, 1];
+
 const ENTITY_GLYPHS = {
   core: "CORE",
   drill: "DRL",
@@ -78,43 +80,12 @@ function getWallCorners(relativeHex, size, radiusScale) {
   return corners;
 }
 
-function drawCornerHexFrame(ctx, corners, segmentRatio) {
-  for (let i = 0; i < corners.length; i += 1) {
-    const previous = corners[(i + corners.length - 1) % corners.length];
-    const current = corners[i];
-    const next = corners[(i + 1) % corners.length];
-    const towardPrevious = {
-      x: current.x + (previous.x - current.x) * segmentRatio,
-      y: current.y + (previous.y - current.y) * segmentRatio,
-    };
-    const towardNext = {
-      x: current.x + (next.x - current.x) * segmentRatio,
-      y: current.y + (next.y - current.y) * segmentRatio,
-    };
-
-    ctx.beginPath();
-    ctx.moveTo(towardPrevious.x, towardPrevious.y);
-    ctx.lineTo(current.x, current.y);
-    ctx.lineTo(towardNext.x, towardNext.y);
-    ctx.stroke();
-  }
-}
-
-function drawWallExterior(ctx, footprint, size, alpha) {
+function getWallBoundarySegments(footprint, size, radiusScale) {
   const footprintKeys = new Set(footprint.map((hex) => makeRelativeKey(hex.q, hex.r)));
-
-  ctx.fillStyle = `rgba(255, 226, 64, ${0.04 * alpha})`;
-
-  for (const hex of footprint) {
-    drawPath(ctx, getWallCorners(hex, size, 1));
-    ctx.fill();
-  }
-
-  ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
-  ctx.lineWidth = 2.2;
+  const segments = [];
 
   for (const hex of footprint) {
-    const corners = getWallCorners(hex, size, 1);
+    const corners = getWallCorners(hex, size, radiusScale);
 
     for (let directionIndex = 0; directionIndex < HEX_DIRECTIONS.length; directionIndex += 1) {
       const direction = HEX_DIRECTIONS[directionIndex];
@@ -122,54 +93,56 @@ function drawWallExterior(ctx, footprint, size, alpha) {
 
       if (footprintKeys.has(neighborKey)) continue;
 
-      const start = corners[directionIndex];
-      const end = corners[(directionIndex + 1) % corners.length];
-
-      ctx.beginPath();
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
+      const edgeIndex = HEX_EDGE_BY_DIRECTION[directionIndex];
+      segments.push({
+        start: corners[edgeIndex],
+        end: corners[(edgeIndex + 1) % corners.length],
+      });
     }
   }
+
+  return segments;
 }
 
-function drawSingleWallInnerFrame(ctx, size, alpha) {
-  const innerCorners = [];
-
-  for (let i = 0; i < 6; i += 1) {
-    innerCorners.push(hexCorner({ x: 0, y: 0 }, size * 0.56, i));
+function strokeSegments(ctx, segments) {
+  for (const segment of segments) {
+    ctx.beginPath();
+    ctx.moveTo(segment.start.x, segment.start.y);
+    ctx.lineTo(segment.end.x, segment.end.y);
+    ctx.stroke();
   }
-
-  ctx.strokeStyle = `rgba(255, 236, 126, ${0.76 * alpha})`;
-  ctx.lineWidth = 1.5;
-  drawCornerHexFrame(ctx, innerCorners, 0.24);
 }
 
-function drawLargeWallDetail(ctx, footprint, size, alpha) {
-  if (footprint.length <= 1) {
-    drawSingleWallInnerFrame(ctx, size, alpha);
-    return;
+function fillWallFootprint(ctx, footprint, size, alpha) {
+  ctx.fillStyle = `rgba(255, 226, 64, ${0.045 * alpha})`;
+
+  for (const hex of footprint) {
+    drawPath(ctx, getWallCorners(hex, size, 1));
+    ctx.fill();
   }
+}
 
-  ctx.strokeStyle = `rgba(255, 236, 126, ${0.58 * alpha})`;
-  ctx.lineWidth = 1.4;
+function getInnerWallRadiusScale(size) {
+  const insetPixels = Math.min(2, Math.max(1.2, size * 0.075));
 
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.34, -size * 0.16);
-  ctx.lineTo(size * 0.42, -size * 0.34);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(size * 0.06, size * 0.46);
-  ctx.lineTo(size * 0.84, size * 0.18);
-  ctx.stroke();
+  return Math.max(0.88, 1 - insetPixels / size);
 }
 
 function drawHexWallShape(ctx, source, size, alpha = 1) {
   const footprint = getWallFootprint(source);
+  const innerScale = getInnerWallRadiusScale(size);
+  const outerSegments = getWallBoundarySegments(footprint, size, 1);
+  const innerSegments = getWallBoundarySegments(footprint, size, innerScale);
 
-  drawWallExterior(ctx, footprint, size, alpha);
-  drawLargeWallDetail(ctx, footprint, size, alpha);
+  fillWallFootprint(ctx, footprint, size, alpha);
+
+  ctx.strokeStyle = `rgba(255, 226, 64, ${0.98 * alpha})`;
+  ctx.lineWidth = 2.2;
+  strokeSegments(ctx, outerSegments);
+
+  ctx.strokeStyle = `rgba(255, 236, 126, ${0.72 * alpha})`;
+  ctx.lineWidth = 1.3;
+  strokeSegments(ctx, innerSegments);
 }
 
 function drawCaveWall(ctx, naturalBlock, size) {
