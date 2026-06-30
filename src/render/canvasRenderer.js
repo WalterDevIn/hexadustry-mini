@@ -188,9 +188,13 @@ function drawAnimatedWallShape(ctx, source, size, color, alpha, scale) {
   ctx.restore();
 }
 function getOreColor(ore) { return ORE_COLORS[ore.type] ?? ORE_COLORS[ore.colorId] ?? "rgba(255, 255, 255, 0.78)"; }
+function isGroundCovered(tile) {
+  const surfaceLayer = tile.layers.surface;
+  return Boolean(surfaceLayer.naturalBlock || surfaceLayer.buildingId || surfaceLayer.groundUnitId);
+}
 function drawGroundLayer(ctx, hex, tile, size, origin) {
   const ore = tile.layers.ground.ore;
-  if (!ore) return;
+  if (!ore || isGroundCovered(tile)) return;
   const center = axialToPixel(hex, size, origin);
   ctx.save();
   ctx.font = `700 ${Math.floor(size * 0.72)}px Courier New`;
