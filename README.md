@@ -152,6 +152,8 @@ Todos los muros:
 
 Los muros multi-hex reservan todos los tiles de su huella, pero el renderer solo dibuja el contorno exterior y no dibuja divisorias internas entre hexes.
 
+El muro grande mantiene una huella axial entera igual que los otros muros. Su unica diferencia de input es `snapMouseToFootprintCenter`: el mouse se interpreta desde el centro efectivo/interseccion de la pieza para calcular el hex ancla, pero la preview, la construccion y el muro construido usan la misma grilla final sin offsets visuales ni subgrillas.
+
 Flujo:
 
 1. Abrir la pestana `MUROS`.
