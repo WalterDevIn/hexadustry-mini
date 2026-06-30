@@ -17,6 +17,7 @@ Mouse = apuntado del jugador, de la torreta montada y de la construccion activa
 Click izquierdo = dispara si no hay bloque seleccionado / coloca bloque seleccionado
 Click izquierdo sostenido = arrastra y encola bloques sobre el rastro
 Click derecho = iniciar deconstruccion o deseleccionar bloque si no hay nada deconstruible
+Q = cancelar toda la cola de construccion/deconstruccion
 R = rotar el bloque seleccionado cuando tenga rotaciones
 V = reaparecer en el nucleo construido
 ```
@@ -44,15 +45,18 @@ La version actual contiene:
 - Torreta de unidad montada en el jugador, con rotacion propia y disparo automatico si se mantiene click izquierdo.
 - Proyectiles aereos como rayitas rapidas; impactan contra enemigos y atraviesan muros por pertenecer a capa aerea.
 - Menu inferior derecho de construccion con bloques en fila y categorias a la derecha en grilla de 2 columnas.
+- Al seleccionar un bloque, el menu muestra el coste como `material: usa/tengo`.
 - Categorias ordenadas como torretas, extractores, transportadoras, energia, muros, fabricas, unidades y apoyo.
 - Tres bloques construibles de muro: chico, grande y enorme.
 - Bloque especial `NUCLEO` en apoyo, con huella de 7 hexes y respawn con `V`.
 - Nucleo inicial ya construido en el origen, ocupando correctamente sus 7 hexes.
-- Recursos infinitos para pruebas de construccion.
+- Recursos iniciales finitos: `260 copper`, `80 lead`, `40 graphite`.
+- Construir gasta materiales al encolar la construccion.
 - Preview tenue del bloque seleccionado siguiendo el mouse.
 - Construcciones y deconstrucciones encoladas con siluetas translucidas.
 - Una sola operacion de construccion/deconstruccion avanza por vez; las demas quedan como previas en espera.
-- Mientras haya operaciones en cola, el modo construccion queda bloqueado: no se puede deseleccionar, cambiar categoria, cambiar bloque ni rotar seleccion.
+- Se puede cambiar de categoria, bloque y rotacion mientras la nave construye.
+- `Q` cancela toda la cola, borra las previas, devuelve materiales de construcciones pendientes y desmarca deconstrucciones pendientes.
 - Ritmo de construccion y deconstruccion multiplicado por 4 respecto del tiempo base del bloque.
 - ECS minimo.
 - Enemigos iniciales desactivados temporalmente.
@@ -129,7 +133,7 @@ Las entidades son solo IDs numericos. No contienen logica.
 - `enemyAiSystem`: busca una entidad del equipo jugador y acelera hacia ella.
 - `groundEnemySystem`: mueve enemigos terrestres por hexagonos y evita muros solidos.
 - `movementSystem`: aplica velocidad sobre transform.
-- `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez, mantiene el resto como cola visual y bloquea el apuntado de la nave hacia la operacion activa.
+- `constructionSystem`: procesa una sola operacion de construccion/deconstruccion por vez, mantiene el resto como cola visual, gasta/devuelve recursos y bloquea el apuntado de la nave hacia la operacion activa.
 - `canvasRenderer`: no decide gameplay; dibuja por orden de capas.
 
 ## Jugador
@@ -165,7 +169,11 @@ Orden de categorias:
 
 La seleccion de categoria se guarda en `gameState.ui.buildMenu.activeCategory`. La seleccion de bloque se guarda en `gameState.ui.buildMenu.selectedBlockId`. La rotacion actual se guarda en `gameState.ui.buildMenu.rotationIndex`.
 
-Mientras haya una construccion o deconstruccion en cola, el modo construccion queda bloqueado. El menu no permite cambiar categoria ni bloque, el click derecho vacio no deselecciona, y `R` no rota la seleccion hasta que la cola se complete.
+Seleccionar un bloque actualiza el estado del menu con sus costes en el formato `material: usa/tengo`. Por ejemplo: `copper: 24/260`. Ese valor se refresca cuando se gastan o devuelven recursos.
+
+Mientras la nave construye se puede cambiar de categoria, bloque seleccionado y rotacion. Las operaciones ya encoladas conservan el bloque y la rotacion con los que fueron creadas.
+
+`Q` cancela toda la cola actual de construccion/deconstruccion. Las construcciones pendientes devuelven su coste; las deconstrucciones pendientes dejan de marcar al edificio como `deconstructing`.
 
 ## Bloques construibles
 
@@ -186,7 +194,7 @@ Todos los muros:
 - usan el color amarillo del jugador;
 - se renderizan como una figura construida, no como piedra natural.
 
-El nucleo usa la misma huella del muro enorme. Visualmente tiene un contorno exterior de muro completo y un cuadrado central de lado `1.2 * hexSize`.
+El nucleo usa la misma huella del muro enorme. Visualmente tiene un contorno exterior de muro completo, un hexagono interno completo y un cuadrado central de lado `1.5 * hexSize`.
 
 Los muros multi-hex reservan todos los tiles de su huella, pero el renderer solo dibuja el contorno exterior y no dibuja divisorias internas entre hexes.
 
@@ -195,17 +203,18 @@ El muro grande mantiene una huella axial entera igual que los otros muros. Su un
 Flujo:
 
 1. Abrir la pestana `MUROS` o `APOYO`.
-2. Seleccionar un bloque.
+2. Seleccionar un bloque y ver su coste `material: usa/tengo`.
 3. Mover el mouse para ver la previa tenue.
 4. Rotar con `R` si el bloque seleccionado lo permite.
 5. Hacer click izquierdo sobre un hex libre o arrastrar con click izquierdo sostenido.
-6. Cada bloque valido del rastro entra como preview translucida en la cola de construccion.
-7. Desde ese momento el modo construccion queda bloqueado hasta que la cola termine.
-8. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
-9. La nave apunta al centro visual de la operacion que se esta construyendo o destruyendo.
-10. Al terminar una construccion, aparece el bloque solido y empieza la siguiente operacion de la cola.
-11. Click derecho sobre cualquier hex ocupado por un bloque construido encola deconstruccion.
-12. Al terminar la deconstruccion, el bloque desaparece y devuelve sus materiales.
+6. Cada bloque valido del rastro entra como preview translucida en la cola de construccion y gasta materiales.
+7. Solo la operacion mas antigua avanza; las demas quedan visibles en espera.
+8. La nave apunta al centro visual de la operacion que se esta construyendo o destruyendo.
+9. Se puede seleccionar otro bloque mientras la cola avanza.
+10. `Q` cancela toda la cola, borra las previas y revierte las operaciones pendientes.
+11. Al terminar una construccion, aparece el bloque solido y empieza la siguiente operacion de la cola.
+12. Click derecho sobre cualquier hex ocupado por un bloque construido encola deconstruccion.
+13. Al terminar la deconstruccion, el bloque desaparece y devuelve sus materiales.
 
 ## Capas del mapa
 
