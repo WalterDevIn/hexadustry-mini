@@ -1,9 +1,4 @@
-import {
-  getBuildingDefinition,
-  getBuildingFootprint,
-  getBuildingOccupiedFootprint,
-  getBuildTime,
-} from "../content/buildingDefinitions.js";
+import { getBuildingDefinition, getBuildingFootprint, getBuildTime } from "../content/buildingDefinitions.js";
 import { makeHexKey } from "../hex/hexMath.js";
 
 function hasEnoughResources(resources, cost) {
@@ -75,7 +70,6 @@ function createBuildingFromConstruction(construction, definition) {
     direction: construction.rotationIndex,
     directionMode: definition.directionMode,
     footprint: construction.footprint,
-    occupiedFootprint: construction.occupiedFootprint,
     occupiedHexes: construction.occupiedHexes,
     constructed: true,
     cost: { ...definition.cost },
@@ -119,8 +113,7 @@ export function requestBuildAt(gameState, q, r) {
   if (definition.type !== "wall") return null;
 
   const footprint = getBuildingFootprint(definition, rotationIndex);
-  const occupiedFootprint = getBuildingOccupiedFootprint(definition, rotationIndex);
-  const occupiedHexes = getAbsoluteFootprint(q, r, occupiedFootprint);
+  const occupiedHexes = getAbsoluteFootprint(q, r, footprint);
 
   if (isFootprintOccupied(gameState.mapWorld, occupiedHexes)) return null;
   if (!hasEnoughResources(gameState.mapWorld.resources, definition.cost)) return null;
@@ -134,7 +127,6 @@ export function requestBuildAt(gameState, q, r) {
     r,
     rotationIndex,
     footprint,
-    occupiedFootprint,
     occupiedHexes,
     elapsed: 0,
     totalTime: getBuildTime(definition),
@@ -164,7 +156,6 @@ export function requestDeconstructAt(gameState, q, r) {
     q: building.q,
     r: building.r,
     footprint: building.footprint ?? getBuildingFootprint(definition, building.direction ?? 0),
-    occupiedFootprint: building.occupiedFootprint ?? getBuildingOccupiedFootprint(definition, building.direction ?? 0),
     occupiedHexes: building.occupiedHexes ?? [{ q: building.q, r: building.r }],
     elapsed: 0,
     totalTime: getBuildTime(definition),
