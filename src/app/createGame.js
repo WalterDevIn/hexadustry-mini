@@ -1,6 +1,8 @@
 import { createInitialGameState } from "../game/createInitialGameState.js";
+import { bindBuildPlacementInput } from "../input/buildPlacementInput.js";
 import { bindKeyboardInput } from "../input/keyboardInput.js";
 import { createCanvasRenderer } from "../render/canvasRenderer.js";
+import { constructionSystem } from "../systems/constructionSystem.js";
 import { enemyAiSystem } from "../systems/enemyAiSystem.js";
 import { groundEnemySystem } from "../systems/groundEnemySystem.js";
 import { movementSystem } from "../systems/movementSystem.js";
@@ -14,6 +16,7 @@ export function createGame(canvas) {
   const renderer = createCanvasRenderer(canvas, gameState);
   const unbindKeyboardInput = bindKeyboardInput(gameState.input);
   const unbindBuildMenu = bindBuildMenu(gameState);
+  const unbindBuildPlacementInput = bindBuildPlacementInput(canvas, gameState);
 
   let animationFrameId = null;
 
@@ -22,6 +25,7 @@ export function createGame(canvas) {
     enemyAiSystem(gameState, dt);
     groundEnemySystem(gameState, dt);
     movementSystem(gameState, dt);
+    constructionSystem(gameState, dt);
   }
 
   function frame(timestamp) {
@@ -62,6 +66,7 @@ export function createGame(canvas) {
       stop();
       unbindKeyboardInput();
       unbindBuildMenu();
+      unbindBuildPlacementInput();
       window.removeEventListener("resize", handleResize);
     },
   };
