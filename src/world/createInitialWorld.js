@@ -1,4 +1,4 @@
-import { generateHexDisk, makeHexKey } from "../hex/hexMath.js";
+import { makeHexKey } from "../hex/hexMath.js";
 
 function createTile(q, r) {
   return {
@@ -10,10 +10,20 @@ function createTile(q, r) {
   };
 }
 
-function placeOre(tileMap, q, r, oreType, amount) {
-  const tile = tileMap.get(makeHexKey(q, r));
+function getOrCreateTile(tileMap, q, r) {
+  const key = makeHexKey(q, r);
+  const existingTile = tileMap.get(key);
 
-  if (!tile) return;
+  if (existingTile) return existingTile;
+
+  const tile = createTile(q, r);
+  tileMap.set(key, tile);
+
+  return tile;
+}
+
+function placeOre(tileMap, q, r, oreType, amount) {
+  const tile = getOrCreateTile(tileMap, q, r);
 
   tile.ore = {
     type: oreType,
@@ -22,47 +32,33 @@ function placeOre(tileMap, q, r, oreType, amount) {
 }
 
 function placeBuilding(world, building) {
-  const tile = world.tileMap.get(makeHexKey(building.q, building.r));
-
-  if (!tile) return;
+  const tile = getOrCreateTile(world.tileMap, building.q, building.r);
 
   world.buildings.push(building);
   tile.buildingId = building.id;
 }
 
+export function getTile(world, q, r) {
+  const key = makeHexKey(q, r);
+  return world.tileMap.get(key) ?? createTile(q, r);
+}
+
 export function createInitialWorld() {
-  const hexes = generateHexDisk(7);
-  const tileMap = new Map();
-
-  for (const hex of hexes) {
-    tileMap.set(makeHexKey(hex.q, hex.r), createTile(hex.q, hex.r));
-  }
-
   const world = {
-    mapRadius: 7,
-    hexes,
-    tileMap,
+    mapRadius: 512,
+    tileMap: new Map(),
     buildings: [],
-    enemies: [
-      {
-        id: "enemy-01",
-        type: "crawler",
-        q: -6,
-        r: 2,
-        hp: 40,
-        maxHp: 40,
-        targetBuildingId: "core-01",
-      },
-    ],
     resources: {
       copper: 0,
     },
   };
 
-  placeOre(tileMap, -3, 1, "copper", 800);
-  placeOre(tileMap, -2, 1, "copper", 650);
-  placeOre(tileMap, -2, 2, "copper", 620);
-  placeOre(tileMap, 2, -3, "copper", 500);
+  placeOre(world.tileMap, -3, 1, "copper", 800);
+  placeOre(world.tileMap, -2, 1, "copper", 650);
+  placeOre(world.tileMap, -2, 2, "copper", 620);
+  placeOre(world.tileMap, 2, -3, "copper", 500);
+  placeOre(world.tileMap, 12, -5, "copper", 900);
+  placeOre(world.tileMap, -15, 8, "copper", 760);
 
   placeBuilding(world, {
     id: "core-01",
