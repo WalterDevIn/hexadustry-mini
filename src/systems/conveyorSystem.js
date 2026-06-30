@@ -4,8 +4,12 @@ function emitBuildResourcesChanged() {
   if (typeof document !== "undefined") document.dispatchEvent(new CustomEvent("build-resources-changed"));
 }
 
+function getDirectionIndex(building) {
+  return (building.direction ?? 0) % HEX_DIRECTIONS.length;
+}
+
 function getDirection(building) {
-  return HEX_DIRECTIONS[(building.direction ?? 0) % HEX_DIRECTIONS.length];
+  return HEX_DIRECTIONS[getDirectionIndex(building)];
 }
 
 function getBuildingAt(world, q, r) {
@@ -75,7 +79,12 @@ function takeFromDrill(drillBuilding) {
 }
 
 function tryPullFromAdjacentDrill(world, conveyorBuilding) {
-  for (const direction of HEX_DIRECTIONS) {
+  const outputDirectionIndex = getDirectionIndex(conveyorBuilding);
+
+  for (let directionIndex = 0; directionIndex < HEX_DIRECTIONS.length; directionIndex += 1) {
+    if (directionIndex === outputDirectionIndex) continue;
+
+    const direction = HEX_DIRECTIONS[directionIndex];
     const source = getBuildingAt(world, conveyorBuilding.q + direction.q, conveyorBuilding.r + direction.r);
 
     if (source?.type !== "drill") continue;
