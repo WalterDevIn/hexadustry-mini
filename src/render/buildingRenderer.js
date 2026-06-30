@@ -1,5 +1,5 @@
 import { getBuildingDefinition, getBuildingFootprint } from "../content/buildingDefinitions.js";
-import { axialToPixel } from "../hex/hexMath.js";
+import { axialToPixel, buildHexPolygon, HEX_DIRECTIONS } from "../hex/hexMath.js";
 import { easeOutCubic } from "./renderUtils.js";
 import { getOreColor } from "./terrainRenderer.js";
 import {
@@ -15,9 +15,20 @@ import {
 const BUILD_ANIMATION_YELLOW = [255, 226, 64];
 const BUILD_ANIMATION_RED = [255, 64, 64];
 const ENTITY_GLYPHS = {
-  conveyor: ">>>",
   turret: "TRT",
 };
+
+function getDirectionVector(directionIndex, size) {
+  const direction = HEX_DIRECTIONS[directionIndex % HEX_DIRECTIONS.length];
+  const end = axialToPixel(direction, size);
+  const length = Math.hypot(end.x, end.y) || 1;
+
+  return {
+    x: end.x / length,
+    y: end.y / length,
+    angle: Math.atan2(end.y, end.x),
+  };
+}
 
 function drawTriangleBlade(ctx, distance, length, width) {
   ctx.beginPath();
@@ -95,6 +106,71 @@ function drawCommonDrill(ctx, building, size, gameState) {
   ctx.restore();
 }
 
+function drawMovingArrow(ctx, direction, offset, size) {
+  ctx.save();
+  ctx.translate(direction.x * offset, direction.y * offset);
+  ctx.rotate(direction.angle);
+  ctx.font = `700 ${Math.floor(size * 0.48)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.fillText(">", 0, size * 0.02);
+  ctx.restore();
+}
+
+function drawConveyorItem(ctx, building, direction, size) {
+  const item = building.conveyor?.item;
+
+  if (!item) return;
+
+  const transferSeconds = building.conveyor.transferSeconds || 0.33;
+  const progress = Math.min(1, building.conveyor.progress / transferSeconds);
+  const travel = -size * 0.42 + progress * size * 0.84;
+
+  ctx.save();
+  ctx.translate(direction.x * travel, direction.y * travel);
+  ctx.font = `700 ${Math.floor(size * 0.42)}px Courier New`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = getOreColor({ type: item.type });
+  ctx.fillText("x", 0, size * 0.02);
+  ctx.restore();
+}
+
+function drawTransportBelt(ctx, building, size) {
+  const polygon = buildHexPolygon({ q: 0, r: 0 }, size * 0.78, { x: 0, y: 0 });
+  const direction = getDirectionVector(building.direction ?? 0, size);
+  const phase = building.conveyor?.beltPhase ?? 0;
+  const offsetA = -size * 0.32 + phase * size * 0.64;
+  const offsetB = offsetA - size * 0.34;
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.86)";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(polygon.points[0].x, polygon.points[0].y);
+  for (let i = 1; i < polygon.points.length; i += 1) ctx.lineTo(polygon.points[i].x, polygon.points[i].y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.save();
+  ctx.rotate(direction.angle);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.42, -size * 0.28);
+  ctx.lineTo(size * 0.42, -size * 0.28);
+  ctx.moveTo(-size * 0.42, size * 0.28);
+  ctx.lineTo(size * 0.42, size * 0.28);
+  ctx.stroke();
+  ctx.restore();
+
+  drawMovingArrow(ctx, direction, offsetA, size);
+  drawMovingArrow(ctx, direction, offsetB, size);
+  drawConveyorItem(ctx, building, direction, size);
+}
+
 export function drawBuilding(ctx, building, size, origin, gameState) {
   const center = axialToPixel(building, size, origin);
   const radius = size * 0.48;
@@ -115,12 +191,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
   } else if (building.type === "drill") {
     drawCommonDrill(ctx, building, size, gameState);
   } else if (building.type === "conveyor") {
-    ctx.beginPath();
-    ctx.moveTo(-radius, -radius * 0.45);
-    ctx.lineTo(radius, 0);
-    ctx.lineTo(-radius, radius * 0.45);
-    ctx.closePath();
-    ctx.stroke();
+    drawTransportBelt(ctx, building, size);
   } else if (building.type === "turret") {
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.75, 0, Math.PI * 2);
@@ -133,7 +204,7 @@ export function drawBuilding(ctx, building, size, origin, gameState) {
     drawHexWallShape(ctx, building, size, 1);
   }
 
-  if (building.type !== "wall" && building.type !== "core" && building.type !== "drill") {
+  if (building.type !== "wall" && building.type !== "core" && building.type !== "drill" && building.type !== "conveyor") {
     ctx.font = `${Math.floor(size * 0.22)}px Courier New`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
