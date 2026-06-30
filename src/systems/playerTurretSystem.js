@@ -74,6 +74,7 @@ export function playerTurretSystem(gameState, dt) {
 
   turret.cooldown = Math.max(0, turret.cooldown - dt);
 
+  if (gameState.playerSpawn?.active) return;
   if (!input.primaryFire || !input.pointerWorld) return;
   if (turret.cooldown > 0) return;
 
