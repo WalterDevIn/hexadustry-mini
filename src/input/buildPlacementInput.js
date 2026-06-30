@@ -84,6 +84,22 @@ function cycleSelectedBlockRotation(gameState) {
   updateHoveredHexFromPointer(gameState);
 }
 
+function clearSelectedBuildBlock(gameState) {
+  gameState.ui.buildMenu.selectedBlockId = null;
+  gameState.ui.buildMenu.rotationIndex = 0;
+  gameState.ui.buildMenu.hoveredHex = null;
+
+  for (const blockButton of document.querySelectorAll(".build-menu__block")) {
+    blockButton.classList.remove("is-active");
+  }
+
+  const status = document.querySelector("#build-menu-status");
+
+  if (status) {
+    status.textContent = "sin bloque seleccionado";
+  }
+}
+
 export function bindBuildPlacementInput(canvas, gameState) {
   function updatePointer(event) {
     const pointerWorld = getPointerWorldPoint(canvas, gameState, event);
@@ -121,7 +137,12 @@ export function bindBuildPlacementInput(canvas, gameState) {
     }
 
     if (event.button === 2) {
-      requestDeconstructAt(gameState, hoveredHex.q, hoveredHex.r);
+      const deconstruction = requestDeconstructAt(gameState, hoveredHex.q, hoveredHex.r);
+
+      if (!deconstruction) {
+        clearSelectedBuildBlock(gameState);
+      }
+
       event.preventDefault();
     }
   }
