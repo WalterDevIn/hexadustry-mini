@@ -71,6 +71,7 @@ function createBuildingFromConstruction(construction, definition) {
     directionMode: definition.directionMode,
     footprint: construction.footprint,
     occupiedHexes: construction.occupiedHexes,
+    centerOnAnchor: definition.centerOnAnchor ?? false,
     constructed: true,
     cost: { ...definition.cost },
   };
@@ -128,6 +129,7 @@ export function requestBuildAt(gameState, q, r) {
     rotationIndex,
     footprint,
     occupiedHexes,
+    centerOnAnchor: definition.centerOnAnchor ?? false,
     elapsed: 0,
     totalTime: getBuildTime(definition),
   };
@@ -157,6 +159,7 @@ export function requestDeconstructAt(gameState, q, r) {
     r: building.r,
     footprint: building.footprint ?? getBuildingFootprint(definition, building.direction ?? 0),
     occupiedHexes: building.occupiedHexes ?? [{ q: building.q, r: building.r }],
+    centerOnAnchor: building.centerOnAnchor ?? definition.centerOnAnchor ?? false,
     elapsed: 0,
     totalTime: getBuildTime(definition),
     refundCost: building.cost ?? definition.cost,
