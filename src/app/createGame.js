@@ -1,20 +1,40 @@
+import { createInitialGameState } from "../game/createInitialGameState.js";
+import { bindKeyboardInput } from "../input/keyboardInput.js";
 import { createCanvasRenderer } from "../render/canvasRenderer.js";
-import { createInitialWorld } from "../world/createInitialWorld.js";
+import { enemyAiSystem } from "../systems/enemyAiSystem.js";
+import { movementSystem } from "../systems/movementSystem.js";
+import { playerControlSystem } from "../systems/playerControlSystem.js";
+
+const MAX_DT = 1 / 20;
 
 export function createGame(canvas) {
-  const world = createInitialWorld();
-  const renderer = createCanvasRenderer(canvas, world);
+  const gameState = createInitialGameState();
+  const renderer = createCanvasRenderer(canvas, gameState);
+  const unbindKeyboardInput = bindKeyboardInput(gameState.input);
 
   let animationFrameId = null;
 
-  function frame() {
+  function update(dt) {
+    playerControlSystem(gameState, dt);
+    enemyAiSystem(gameState, dt);
+    movementSystem(gameState, dt);
+  }
+
+  function frame(timestamp) {
+    const previousTimestamp = gameState.time.lastTimestamp || timestamp;
+    const dt = Math.min((timestamp - previousTimestamp) / 1000, MAX_DT);
+
+    gameState.time.lastTimestamp = timestamp;
+
+    update(dt);
     renderer.render();
+
     animationFrameId = requestAnimationFrame(frame);
   }
 
   function start() {
     renderer.resize();
-    frame();
+    animationFrameId = requestAnimationFrame(frame);
   }
 
   function stop() {
@@ -31,11 +51,12 @@ export function createGame(canvas) {
   window.addEventListener("resize", handleResize);
 
   return {
-    world,
+    gameState,
     start,
     stop,
     destroy() {
       stop();
+      unbindKeyboardInput();
       window.removeEventListener("resize", handleResize);
     },
   };
